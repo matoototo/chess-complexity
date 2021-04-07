@@ -1,0 +1,10 @@
+parser.cpp
+    - filter games that do not have computer evaluations
+    - extract evaluations (and possibly compute the deltas?) into a separate file, 1:1 correspondance with the main pgn file
+    - extract useful header information, add to same file as above
+
+parser.py
+    - convert each position to planes, store in PyTorch suitable format
+
+try
+    - convert to UCI notation with pgn-extract and then make everything in C++?
