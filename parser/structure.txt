@@ -1,10 +1,13 @@
-parser.cpp
+filter.cpp
     - filter games that do not have computer evaluations
-    - extract evaluations (and possibly compute the deltas?) into a separate file, 1:1 correspondance with the main pgn file
-    - extract useful header information, add to same file as above
+    - filter useless headers
 
 parser.py
-    - convert each position to planes, store in PyTorch suitable format
+    - convert each position to FEN, extract evaluations and header values
+
+next-todo
+    - C++ program for converting data of format given by parser.py into a PyTorch dataset or some other suitable format.
 
 try
-    - convert to UCI notation with pgn-extract and then make everything in C++?
+    - filter out low time control games, though probably after there is a baseline model in place
+    - attackers plane?
