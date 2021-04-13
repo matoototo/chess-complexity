@@ -5,8 +5,8 @@ filter.cpp
 parser.py
     - convert each position to FEN, extract evaluations and header values
 
-next-todo
-    - C++ program for converting data of format given by parser.py into a PyTorch dataset or some other suitable format.
+data.py
+    - converts output from parser.py into a PyTorch dataset
 
 try
     - filter out low time control games, though probably after there is a baseline model in place
