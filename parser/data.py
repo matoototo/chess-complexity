@@ -28,12 +28,14 @@ class Loader:
                     # if (len(data) > 100000): exit()
                     break
                 board = Board(fen)
+                to_move = board.side_to_move()
                 old_eval = eval
                 eval = float(file.readline())
                 planes = fen_to_planes(board)
+                planes = torch.cat((planes, elo_to_plane(welo if to_move == 1.0 else belo)))
                 data.append(planes)
                 if old_eval != None: # isn't first pos
-                    labels.append(eval_delta(old_eval, eval, board.side_to_move()))
+                    labels.append(eval_delta(old_eval, eval, to_move))
             # print('after: ', file.readline())
         print(len(data), len(labels))
         return (data, labels)
@@ -56,7 +58,7 @@ class Board:
             if (char == '/'): continue
             if (char.isnumeric()): index += int(char)
             elif (char in ['r', 'n', 'b', 'q', 'k', 'p', 'R', 'N', 'B', 'Q', 'K', 'P']):
-                indices['char'].append(index)
+                indices[char].append(index)
                 index += 1
             else: index += 1
         return indices
@@ -65,6 +67,12 @@ def fen_to_planes(board):
     planes = populate_piece_planes(board)
     to_move = torch.full((1, 8, 8), board.side_to_move())
     planes = torch.cat((planes, to_move))
+    return planes
+
+def elo_to_plane(elo):
+    AVG = 1500 # Approximate values, worth taking another
+    STDDEV = 350 # look at once a baseline is established
+    return torch.full((1, 8, 8), (elo-AVG)/STDDEV)
 
 def eval_delta(eval, next_eval, to_move):
     return (eval-next_eval)*to_move
@@ -78,3 +86,4 @@ def populate_piece_planes(board) -> torch.Tensor:
         for index in indices:
             planes[i][index//8][index%8] = 1.0
     return planes
+

@@ -11,3 +11,4 @@ data.py
 try
     - filter out low time control games, though probably after there is a baseline model in place
     - attackers plane?
+    - history planes
