@@ -50,6 +50,3 @@ class ComplexityHead(nn.Sequential):
             ('lin2', nn.Linear(neurons, 1))
         ]))
 
-
-model = Model(16, 2, 10)
-print(model(torch.randn((100, 14, 8, 8))))
