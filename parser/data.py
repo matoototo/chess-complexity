@@ -1,44 +1,57 @@
 import torch
+import torch.utils.data
 from collections import defaultdict
+from torch.utils.data.dataloader import DataLoader
 
-class Loader:
+
+class PositionDataset(torch.utils.data.Dataset):
     def __init__(self, filename):
         self.filename = filename
-        self.data, self.labels = self.parse_data()
-    def parse_data(self):
-        game = None
-        data = []
-        labels = []
-        file = open(self.filename)
+        self.file = open(self.filename)
+        self.data = []
+        self.labels = []
+
+    def __getitem__(self, i):
+        return (self.data[i], self.labels[i])
+
+    def __len__(self):
+        return len(self.data)
+
+    def parse_data(self, limit):
+        # Parse the next _limit_ entries in the file
+        self.data = []
+        self.labels = []
         while True:
             try: # Ugly way to catch the end of the file
-                winner = int(file.readline())
+                winner = int(self.file.readline())
             except:
+                # swap files here?
                 break
-            welo = int(file.readline())
-            belo = int(file.readline())
-            tc = int(file.readline())
+            welo = int(self.file.readline())
+            belo = int(self.file.readline())
+            tc = int(self.file.readline())
             planes = None
             eval = None
             while (True):
-                fen = file.readline()
+                fen = self.file.readline()
                 if (len(fen) < 5):
-                    data.pop()
-                    print(len(data), len(labels))
-                    # if (len(data) > 100000): exit()
+                    self.data.pop()
+                    if (len(self.data) > limit):
+                        return (self.data, self.labels)
                     break
                 board = Board(fen)
                 to_move = board.side_to_move()
                 old_eval = eval
-                eval = float(file.readline())
+                eval = float(self.file.readline())
                 planes = fen_to_planes(board)
                 planes = torch.cat((planes, elo_to_plane(welo if to_move == 1.0 else belo)))
-                data.append(planes)
+                self.data.append(planes)
                 if old_eval != None: # isn't first pos
-                    labels.append(eval_delta(old_eval, eval, to_move))
+                    self.labels.append(eval_delta(old_eval, eval, to_move))
             # print('after: ', file.readline())
-        print(len(data), len(labels))
-        return (data, labels)
+        return (self.data, self.labels)
+
+
 class Game:
     def __init__(self, winner, welo, belo, tc):
         self.winner = winner
@@ -46,11 +59,14 @@ class Game:
         self.belo = belo
         self.tc = tc
 
+
 class Board:
     def __init__(self, fen):
         self.fen = fen.split(" ")
+
     def side_to_move(self):
         return 1.0 if self.fen[1] == "w" else -1.0
+
     def piece_indices(self):
         index = 0
         indices = defaultdict(list)
@@ -62,6 +78,7 @@ class Board:
                 index += 1
             else: index += 1
         return indices
+
 
 def fen_to_planes(board):
     planes = populate_piece_planes(board)
@@ -75,7 +92,7 @@ def elo_to_plane(elo):
     return torch.full((1, 8, 8), (elo-AVG)/STDDEV)
 
 def eval_delta(eval, next_eval, to_move):
-    return (eval-next_eval)*to_move
+    return torch.tensor([(eval-next_eval)*to_move])
 
 def populate_piece_planes(board) -> torch.Tensor:
     planes = torch.zeros(12, 8, 8)
