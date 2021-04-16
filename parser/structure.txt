@@ -1,3 +1,5 @@
+filter -> parser -> data -> (imported by) train
+
 filter.cpp
     - filter games that do not have computer evaluations
     - filter useless headers
@@ -8,7 +10,11 @@ parser.py
 data.py
     - converts output from parser.py into a PyTorch dataset
 
-try
+try/todo
     - filter out low time control games, though probably after there is a baseline model in place
     - attackers plane?
     - history planes
+    - tags prediction (scrape CT)
+    - timecontrol plane
+    - tensorboard/similar
+    - save model
