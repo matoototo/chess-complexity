@@ -63,18 +63,25 @@ class Game:
 class Board:
     def __init__(self, fen):
         self.fen = fen.split(" ")
+        self.offset = self.create_offsets()
+
+    def create_offsets(self):
+        offset = defaultdict(int)
+        for char, i in zip(['r', 'n', 'b', 'q', 'k', 'p', 'R', 'N', 'B', 'Q', 'K', 'P'], range(12)):
+            offset[char] = i*64
+        return offset
 
     def side_to_move(self):
         return 1.0 if self.fen[1] == "w" else -1.0
 
     def piece_indices(self):
         index = 0
-        indices = defaultdict(list)
+        indices = []
         for char in self.fen[0]:
             if (char == '/'): continue
             if (char.isnumeric()): index += int(char)
             elif (char in ['r', 'n', 'b', 'q', 'k', 'p', 'R', 'N', 'B', 'Q', 'K', 'P']):
-                indices[char].append(index)
+                indices.append(index + self.offset[char])
                 index += 1
             else: index += 1
         return indices
@@ -94,13 +101,10 @@ def elo_to_plane(elo):
 def eval_delta(eval, next_eval, to_move):
     return torch.tensor([(eval-next_eval)*to_move])
 
-def populate_piece_planes(board) -> torch.Tensor:
-    planes = torch.zeros(12, 8, 8)
-    pieces = ['r', 'n', 'b', 'q', 'k', 'p', 'R', 'N', 'B', 'Q', 'K', 'P']
-    all_indices = board.piece_indices()
-    for piece, i in zip(pieces, range(12)):
-        indices = all_indices[piece]
-        for index in indices:
-            planes[i][index//8][index%8] = 1.0
+def populate_piece_planes(board : Board) -> torch.Tensor:
+    planes = torch.zeros(12*64)
+    new_indices = board.piece_indices()
+    planes[new_indices] = 1.0
+    planes = planes.reshape(12, 8, 8)
     return planes
 
