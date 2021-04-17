@@ -45,6 +45,7 @@ class PositionDataset(torch.utils.data.Dataset):
                 eval = float(self.file.readline())
                 planes = fen_to_planes(board)
                 planes = torch.cat((planes, elo_to_plane(welo if to_move == 1.0 else belo)))
+                planes = torch.cat((planes, tc_to_plane(tc)))
                 self.data.append(planes)
                 if old_eval != None: # isn't first pos
                     self.labels.append(eval_delta(old_eval, eval, to_move))
@@ -98,8 +99,13 @@ def elo_to_plane(elo):
     STDDEV = 350 # look at once a baseline is established
     return torch.full((1, 8, 8), (elo-AVG)/STDDEV)
 
-def eval_delta(eval, next_eval, to_move):
-    return torch.tensor([(eval-next_eval)*to_move])
+def tc_to_plane(tc):
+    AVG = 800 # VERY approximate values, definitely worth taking another
+    STDDEV = 200 # look at once a baseline is established
+    return torch.full((1, 8, 8), (tc-AVG)/STDDEV)
+
+def eval_delta(eval, next_eval, next_to_move):
+    return torch.tensor([(eval-next_eval)*next_to_move*-1])
 
 def populate_piece_planes(board : Board) -> torch.Tensor:
     planes = torch.zeros(12*64)
