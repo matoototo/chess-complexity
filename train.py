@@ -1,3 +1,4 @@
+from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data.dataloader import DataLoader
 from model.model import Model, ComplexityHead
 from parser.data import PositionDataset
@@ -15,6 +16,8 @@ path = "/mnt/melem/Linux-data/chess-complex/fens/"
 files = os.listdir(path)
 
 loss_func = torch.nn.MSELoss()
+writer = SummaryWriter("./logs")
+
 
 checkpoints = os.listdir(checkpoint_path)
 if len(checkpoints) != 0:
@@ -75,4 +78,6 @@ for file in files:
                         first = False
                         test_loss += loss_func(preds, y)
                     print(steps, ':', test_loss/len(test_loader))
+                    writer.add_scalar("Loss/test", test_loss/len(test_loader), steps)
     checkpoint.save(steps, net.state_dict(), optim.state_dict(), used, net.args, checkpoint_path + f"{steps}.pt")
+writer.close()
