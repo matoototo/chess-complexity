@@ -1,3 +1,6 @@
 *.pgn
 /potential
 .vscode
+__pycache__
+checkpoints
+logs

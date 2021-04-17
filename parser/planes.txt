@@ -1,4 +1,4 @@
 position (12x8x8)
 side to move (1x8x8)
 elo (1x8x8)
-
+tc (1x8x8)
