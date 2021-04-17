@@ -6,15 +6,14 @@ from collections import OrderedDict
 class Model(nn.Module):
     def __init__(self, filters, blocks, head_neurons):
         super().__init__()
-
-        self.input_layer = nn.Conv2d(14, filters, 3, padding=1)
+        self.input = InputBlock(15, filters)
         self.blocks = nn.Sequential(
             OrderedDict([(f"block{i}", Block(filters)) for i in range(blocks)])
         )
         self.output = ComplexityHead(filters, head_neurons)
 
     def forward(self, x):
-        x = self.input_layer(x)
+        x = self.input(x)
         x = self.blocks(x)
         x = self.output(x)
         return x
@@ -39,6 +38,16 @@ class Block(nn.Module):
         y += x
         y = self.relu2(y)
         return y
+
+class InputBlock(nn.Sequential):
+    def __init__(self, planes, filters):
+        super().__init__(
+            OrderedDict([
+                ("conv1", nn.Conv2d(planes, filters, 3, padding=1, bias=False)),
+                ("bn1", nn.BatchNorm2d(filters)),
+                ("relu1", nn.ReLU(inplace=True)),
+            ])
+        )
 
 
 class ComplexityHead(nn.Sequential):
