@@ -15,6 +15,9 @@ try/todo
     - attackers plane?
     - history planes
     - tags prediction (scrape CT)
-    - timecontrol plane
-    - tensorboard/similar
-    - save model
+    - log gradient norm (returned by clip)
+    - log train loss
+    - try different weight decay values (though cy uses same)
+    - try adam
+    - try LR warmup
+    - set gammas to 1 and betas to 0

@@ -57,6 +57,7 @@ for file in files:
         if (len(train_dataset.data) == 0): break
         loader = DataLoader(train_dataset, 1024, True, pin_memory=True)
         for x, y in loader:
+            net.train()
             x = x.to('cuda:0')
             y = y.to('cuda:0')
             optim.zero_grad()
@@ -66,6 +67,7 @@ for file in files:
             torch.nn.utils.clip_grad_norm_(net.parameters(), 2.0)
             optim.step()
             steps += 1
+            net.eval()
             if (steps%100 == 0):
                 first = True
                 with torch.no_grad():
