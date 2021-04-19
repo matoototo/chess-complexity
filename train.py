@@ -10,13 +10,36 @@ import torch.nn.utils
 import torch.nn
 import os
 
-checkpoint_path = "./checkpoints/"
+checkpoint_path = "./checkpoints/run4/"
 
 path = "/mnt/melem/Linux-data/chess-complex/fens/"
 files = os.listdir(path)
 
 loss_func = torch.nn.MSELoss()
-writer = SummaryWriter("./logs")
+writer = SummaryWriter("./logs/run4/", purge_step=9186)
+
+
+def test(test_loader : DataLoader, net : torch.nn.Module):
+    net.eval()
+    test_loss = 0
+    for x, y in test_loader:
+        x = x.to('cuda:0')
+        y = y.to('cuda:0')
+        preds = net(x)
+        with torch.no_grad():
+            test_loss += loss_func(preds, y)
+    return test_loss/len(test_loader)
+
+
+def train(x, y, net : torch.nn.Module):
+    net.train()
+    x = x.to('cuda:0')
+    y = y.to('cuda:0')
+    optim.zero_grad()
+    preds = net(x)
+    loss = loss_func(preds, y)
+    loss.backward()
+    return loss
 
 
 checkpoints = os.listdir(checkpoint_path)
@@ -52,34 +75,22 @@ for file in files:
     train_dataset = PositionDataset(path + file)
     if file == "processed_0.data":
         train_dataset.file.seek(test_dataset.file.tell())
+    train_loss = 0
     while True:
         train_dataset.parse_data(100000)
         if (len(train_dataset.data) == 0): break
         loader = DataLoader(train_dataset, 1024, True, pin_memory=True)
         for x, y in loader:
-            net.train()
-            x = x.to('cuda:0')
-            y = y.to('cuda:0')
-            optim.zero_grad()
-            preds = net(x)
-            loss = loss_func(preds, y)
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(net.parameters(), 2.0)
+            train_loss += train(x, y, net)
+            norm = torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0)
             optim.step()
             steps += 1
-            net.eval()
             if (steps%100 == 0):
-                first = True
-                with torch.no_grad():
-                    test_loss = 0
-                    for x, y in test_loader:
-                        x = x.to('cuda:0')
-                        y = y.to('cuda:0')
-                        preds = net(x)
-                        # if first: print(preds)
-                        first = False
-                        test_loss += loss_func(preds, y)
-                    print(steps, ':', test_loss/len(test_loader))
-                    writer.add_scalar("Loss/test", test_loss/len(test_loader), steps)
+                test_loss = test(test_loader, net)
+                print(steps, ':', test_loss)
+                writer.add_scalar("Loss/test", test_loss, steps)
+                writer.add_scalar("Gradient norm/norm", norm, steps)
+                writer.add_scalar("Loss/train", train_loss/100, steps)
+                train_loss = 0
     checkpoint.save(steps, net.state_dict(), optim.state_dict(), used, net.args, checkpoint_path + f"{steps}.pt")
 writer.close()
