@@ -68,18 +68,17 @@ test_dataset = PositionDataset("processed_0.data")
 test_dataset.parse_data(100000)
 test_loader = DataLoader(test_dataset, 1024, False, pin_memory=True)
 
-
+train_loss = 0
 for file in files:
     print(file)
     used.append(file)
     train_dataset = PositionDataset(path + file)
     if file == "processed_0.data":
         train_dataset.file.seek(test_dataset.file.tell())
-    train_loss = 0
     while True:
         train_dataset.parse_data(100000)
         if (len(train_dataset.data) == 0): break
-        loader = DataLoader(train_dataset, 1024, True, pin_memory=True)
+        loader = DataLoader(train_dataset, 1024, True, pin_memory=True, drop_last=True)
         for x, y in loader:
             train_loss += train(x, y, net)
             norm = torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0)
@@ -91,6 +90,7 @@ for file in files:
                 writer.add_scalar("Loss/test", test_loss, steps)
                 writer.add_scalar("Gradient norm/norm", norm, steps)
                 writer.add_scalar("Loss/train", train_loss/100, steps)
+                writer.flush()
                 train_loss = 0
     checkpoint.save(steps, net.state_dict(), optim.state_dict(), used, net.args, checkpoint_path + f"{steps}.pt")
 writer.close()
