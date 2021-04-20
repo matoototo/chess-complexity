@@ -26,10 +26,10 @@ class Block(nn.Module):
         self.layers = nn.Sequential(
             OrderedDict([
                 ("conv1", nn.Conv2d(filters, filters, 3, padding=1, bias=False)),
-                ("bn1", nn.BatchNorm2d(filters)),
+                ("bn1", nn.BatchNorm2d(filters, affine=False)),
                 ("relu1", nn.ReLU(inplace=True)),
                 ("conv2", nn.Conv2d(filters, filters, 3, padding=1, bias=False)),
-                ("bn2", nn.BatchNorm2d(filters))
+                ("bn2", nn.BatchNorm2d(filters, affine=False))
             ])
         )
         self.relu2 = nn.ReLU(inplace=True)
@@ -45,7 +45,7 @@ class InputBlock(nn.Sequential):
         super().__init__(
             OrderedDict([
                 ("conv1", nn.Conv2d(planes, filters, 3, padding=1, bias=False)),
-                ("bn1", nn.BatchNorm2d(filters)),
+                ("bn1", nn.BatchNorm2d(filters, affine=False)),
                 ("relu1", nn.ReLU(inplace=True)),
             ])
         )

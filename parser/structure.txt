@@ -15,9 +15,11 @@ try/todo
     - attackers plane?
     - history planes
     - tags prediction (scrape CT)
-    - log gradient norm (returned by clip)
-    - log train loss
     - try different weight decay values (though cy uses same)
     - try adam
     - try LR warmup
-    - set gammas to 1 and betas to 0
+    - add current eval to input?
+    - larger parse chunks (500k~?)
+    - shuffle train file order
+    - determine cause for gradient norm increase in runs 5 and 6
+    - try training with only the head

@@ -10,3 +10,26 @@ run1
 558.5k
 0.0885 64x6x128
 0.01, 0.9, weight_decay=1e-4
+
+run2
+fix eval/train modes (cause test data leakage)
+0.01, 0.9, weight_decay=1e-4
+
+run3
+256 BS (others are 1024)
+0.01, 0.9, weight_decay=1e-4
+
+run4
+observed train loss spikes
+0.01, 0.9, weight_decay=1e-4
+
+run5
+fixed train loss spikes
+0.01, 0.9, weight_decay=1e-4
+
+run6
+0.005, 0.9, weight_decay=1e-4
+
+run7
+static gamma and beta
+0.01, 0.9, weight_decay=1e-4
