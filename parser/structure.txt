@@ -23,3 +23,10 @@ try/todo
     - shuffle train file order
     - determine cause for gradient norm increase in runs 5 and 6
     - try training with only the head
+    - shuffle all positions in file (!)
+        - would make files larger due to header duplication
+    - disable weight decay
+    - increase test and train size
+    - load whole dataset into gpu memory
+    - instead of parsing chunks of data at once, convert fens only when they need to be used (in the __getitem__)
+    - ! drop or carry over small chunks (happens at end of file if there aren't enough)
