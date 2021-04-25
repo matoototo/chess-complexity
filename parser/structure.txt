@@ -30,3 +30,4 @@ try/todo
     - load whole dataset into gpu memory
     - instead of parsing chunks of data at once, convert fens only when they need to be used (in the __getitem__)
     - ! drop or carry over small chunks (happens at end of file if there aren't enough)
+    - either rename data files or add month information to path
