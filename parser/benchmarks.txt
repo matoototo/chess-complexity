@@ -33,3 +33,16 @@ run6
 run7
 static gamma and beta
 0.01, 0.9, weight_decay=1e-4
+
+run8
+adam 64x6x128
+3e-4, drop to 1e-4 at 555k
+
+run9
+adam 128x10x128
+3e-4, drop to 1e-4 at 851k
+
+run10
+current-eval plane
+adam 64x6x128
+3e-4

@@ -31,7 +31,7 @@ def parse_game(game : chess.pgn.Game, out : TextIOWrapper):
     while (game != None):
         out.write(game.board().fen() + '\n')
         if game.eval():
-            out.write(str((2*game.eval().wdl().white().expectation())-1.0))
+            out.write(str((2*game.eval().wdl(model="lichess").white().expectation())-1.0))
         else:
             out.write("0")
         out.write('\n')
@@ -44,9 +44,11 @@ if (len(sys.argv) != 3):
 
 for pgn_file in os.listdir(sys.argv[1]):
     print(pgn_file)
-    if "processed_" + pgn_file.split(".")[0].split("_")[-1] + ".data" in os.listdir(sys.argv[2]): continue
+    split = pgn_file.split(".")[0].split("_")
+    filename = sys.argv[2] + split[-3] + "_processed_" + split[-1] + ".data"
+    if filename.split('/')[-1] in os.listdir(sys.argv[2]): continue
     pgn = open(sys.argv[1] + pgn_file)
-    output = open(sys.argv[2] + "processed_" + pgn_file.split(".")[0].split("_")[-1] + ".data", 'a+')
+    output = open(filename, 'a+')
     i = 0
     game = chess.pgn.read_game(pgn)
     while game != None:
