@@ -46,6 +46,8 @@ class PositionDataset(torch.utils.data.Dataset):
                 planes = fen_to_planes(board)
                 planes = torch.cat((planes, elo_to_plane(welo if to_move == 1.0 else belo)))
                 planes = torch.cat((planes, tc_to_plane(tc)))
+                eval_plane = torch.full((1, 8, 8), eval) # check if passing next instead of current...
+                planes = torch.cat((planes, eval_plane))
                 self.data.append(planes)
                 if old_eval != None: # isn't first pos
                     self.labels.append(eval_delta(old_eval, eval, to_move))

@@ -16,9 +16,7 @@ try/todo
     - history planes
     - tags prediction (scrape CT)
     - try different weight decay values (though cy uses same)
-    - try adam
     - try LR warmup
-    - add current eval to input?
     - larger parse chunks (500k~?)
     - shuffle train file order
     - determine cause for gradient norm increase in runs 5 and 6
@@ -30,5 +28,15 @@ try/todo
     - load whole dataset into gpu memory
     - instead of parsing chunks of data at once, convert fens only when they need to be used (in the __getitem__)
     - ! drop or carry over small chunks (happens at end of file if there aren't enough)
-    - either rename data files or add month information to path
     - castling planes
+    - add random positions by same player to input, including the eval and shift (think more about player specific predictions)
+    - update tester.py to interface with SF for input
+    - test effect of SF depth on prediction error (hopefully it isn't too dependent on depth=20 and instead decreases with depth)
+    - try L2 with adam
+
+tried/done
+    - try adam
+        - found to be much more stable than SGD so it has been in use from run8 onwards
+    - add current eval to input
+        - used for run10 and shows promising results
+    - either rename data files or add month information to path
