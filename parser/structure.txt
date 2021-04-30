@@ -27,12 +27,13 @@ try/todo
     - increase test and train size
     - load whole dataset into gpu memory
     - instead of parsing chunks of data at once, convert fens only when they need to be used (in the __getitem__)
-    - ! drop or carry over small chunks (happens at end of file if there aren't enough)
     - castling planes
     - add random positions by same player to input, including the eval and shift (think more about player specific predictions)
     - update tester.py to interface with SF for input
     - test effect of SF depth on prediction error (hopefully it isn't too dependent on depth=20 and instead decreases with depth)
     - try L2 with adam
+    - move todo list to notion
+    - make train.py work with colab
 
 tried/done
     - try adam
@@ -40,3 +41,6 @@ tried/done
     - add current eval to input
         - used for run10 and shows promising results
     - either rename data files or add month information to path
+    - turn on bias in convs or try BN with \gamma and \beta again
+    - drop or carry over small chunks (happens at end of file if there aren't enough)
+        - currently it drops chunks that are smaller than 100000, but it would be more elegant to just carry them over

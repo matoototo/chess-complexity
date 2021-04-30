@@ -46,3 +46,8 @@ run10
 current-eval plane
 adam 64x6x128
 3e-4
+
+run11
+enable biases in conv layers
+adam 64x6x128
+3e-4
