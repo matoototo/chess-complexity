@@ -10,14 +10,13 @@ import torch.nn.utils
 import torch.nn
 import os
 
-checkpoint_path = "./checkpoints/run9/"
+checkpoint_path = "./checkpoints/run12/"
 
-path = "/mnt/melem/Linux-data/chess-complex/fens/"
+path = "/mnt/melem/Linux-data/chess-complex/fens/2021-03/"
 files = os.listdir(path)
 
 loss_func = torch.nn.MSELoss()
-writer = SummaryWriter("./logs/run9/", purge_step=174352)
-
+writer = SummaryWriter("./logs/run12/", purge_step=0)
 
 def test(test_loader : DataLoader, net : torch.nn.Module):
     net.eval()
@@ -58,7 +57,7 @@ if len(checkpoints) != 0:
     used = cpnt['used_files']
     files = list(filter(lambda x : x not in used, files))
 else:
-    net = Model(128, 10, 128).to('cuda:0')
+    net = Model(64, 6, 128).to('cuda:0')
     net.reset_parameters()
     optim = torch.optim.Adam(net.parameters(), 3e-4)
     used = []
@@ -74,17 +73,19 @@ for file in files:
     print(file)
     used.append(file)
     train_dataset = PositionDataset(path + file)
-    if file == "processed_0.data":
+    if file == "2021-03_processed_0.data":
         train_dataset.file.seek(test_dataset.file.tell())
     while True:
-        train_dataset.parse_data(500000)
-        if (len(train_dataset.data) == 0): break
-        if (len(train_dataset.data) < 100000):
+        train_dataset.parse_data()
+        if (len(train_dataset) == 0): break
+        if (len(train_dataset) < 100000):
+            print("throwing!", len(train_dataset))
             break
-        loader = DataLoader(train_dataset, 1024, True, pin_memory=True, drop_last=True)
+        loader = DataLoader(train_dataset, 1024, True, pin_memory=True, drop_last=True, num_workers=0)
         for x, y in loader:
             train_loss += train(x, y, net)
-            norm = torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0)
+            # norm = torch.nn.utils.clip_grad_norm_(net.parameters(), 4.0)
+            norm = torch.nn.utils.clip_grad_norm_(net.parameters(), 4.0)
             optim.step()
             steps += 1
             if (steps%100 == 0):

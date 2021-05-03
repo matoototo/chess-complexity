@@ -1,3 +1,5 @@
+~ => same model/values unless stated otherwise
+
 1700 = 166k
 0.0925 16x4x128
 0.01, 0.9, weight_decay=1e-5
@@ -49,5 +51,10 @@ adam 64x6x128
 
 run11
 enable biases in conv layers
+adam 64x6x128
+3e-4
+
+run12 ~ run11
+lazy planes conversion sanity check
 adam 64x6x128
 3e-4

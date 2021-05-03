@@ -4,22 +4,30 @@ from collections import defaultdict
 from torch.utils.data.dataloader import DataLoader
 
 
+def create_offsets():
+    offset = defaultdict(int)
+    for char, i in zip(['r', 'n', 'b', 'q', 'k', 'p', 'R', 'N', 'B', 'Q', 'K', 'P'], range(12)):
+        offset[char] = i*64
+    return offset
+
+offsets = create_offsets()
+
+
 class PositionDataset(torch.utils.data.Dataset):
     def __init__(self, filename):
         self.filename = filename
         self.file = open(self.filename)
-        self.data = []
+        self.positions = []
         self.labels = []
 
     def __getitem__(self, i):
-        return (self.data[i], self.labels[i])
+        return (self.positions[i].to_planes(), self.labels[i])
 
     def __len__(self):
-        return len(self.data)
+        return len(self.positions)
 
-    def parse_data(self, limit):
-        # Parse the next _limit_ entries in the file
-        self.data = []
+    def parse_data(self, limit = None):
+        self.positions = []
         self.labels = []
         while True:
             try: # Ugly way to catch the end of the file
@@ -30,29 +38,19 @@ class PositionDataset(torch.utils.data.Dataset):
             welo = int(self.file.readline())
             belo = int(self.file.readline())
             tc = int(self.file.readline())
-            planes = None
+            game = Game(winner, welo, belo, tc)
             eval = None
             while (True):
                 fen = self.file.readline()
                 if (len(fen) < 5):
-                    self.data.pop()
-                    if (len(self.data) > limit):
-                        return (self.data, self.labels)
+                    self.positions.pop() # pop last since it has no label
+                    if (limit and len(self.positions) >= limit): return
                     break
-                board = Board(fen)
-                to_move = board.side_to_move()
                 old_eval = eval
                 eval = float(self.file.readline())
-                planes = fen_to_planes(board)
-                planes = torch.cat((planes, elo_to_plane(welo if to_move == 1.0 else belo)))
-                planes = torch.cat((planes, tc_to_plane(tc)))
-                eval_plane = torch.full((1, 8, 8), eval) # check if passing next instead of current...
-                planes = torch.cat((planes, eval_plane))
-                self.data.append(planes)
+                self.positions.append(Board(game, fen, eval))
                 if old_eval != None: # isn't first pos
-                    self.labels.append(eval_delta(old_eval, eval, to_move))
-            # print('after: ', file.readline())
-        return (self.data, self.labels)
+                    self.labels.append(eval_delta(old_eval, eval, self.positions[-1].side_to_move()))
 
 
 class Game:
@@ -64,37 +62,47 @@ class Game:
 
 
 class Board:
-    def __init__(self, fen):
-        self.fen = fen.split(" ")
-        self.offset = self.create_offsets()
-
-    def create_offsets(self):
-        offset = defaultdict(int)
-        for char, i in zip(['r', 'n', 'b', 'q', 'k', 'p', 'R', 'N', 'B', 'Q', 'K', 'P'], range(12)):
-            offset[char] = i*64
-        return offset
+    def __init__(self, game, fen, eval):
+        self.game = game
+        self.eval = eval
+        self.fen = fen
 
     def side_to_move(self):
-        return 1.0 if self.fen[1] == "w" else -1.0
+        return 1.0 if self.fen.split(' ')[1] == "w" else -1.0
 
     def piece_indices(self):
         index = 0
         indices = []
-        for char in self.fen[0]:
+        for char in self.fen.split(' ')[0]:
             if (char == '/'): continue
             if (char.isnumeric()): index += int(char)
             elif (char in ['r', 'n', 'b', 'q', 'k', 'p', 'R', 'N', 'B', 'Q', 'K', 'P']):
-                indices.append(index + self.offset[char])
+                indices.append(index + offsets[char])
                 index += 1
             else: index += 1
         return indices
 
+    def to_planes(self):
+        to_move = self.side_to_move()
+        planes = self.fen_to_planes()
+        planes = torch.cat((planes, elo_to_plane(self.game.welo if to_move == 1.0 else self.game.belo)))
+        planes = torch.cat((planes, tc_to_plane(self.game.tc)))
+        planes = torch.cat((planes, eval_to_plane(self.eval)))
+        return planes
 
-def fen_to_planes(board):
-    planes = populate_piece_planes(board)
-    to_move = torch.full((1, 8, 8), board.side_to_move())
-    planes = torch.cat((planes, to_move))
-    return planes
+    def fen_to_planes(self):
+        planes = self.populate_piece_planes()
+        to_move = torch.full((1, 8, 8), self.side_to_move())
+        planes = torch.cat((planes, to_move))
+        return planes
+
+    def populate_piece_planes(self) -> torch.Tensor:
+        planes = torch.zeros(12*64)
+        new_indices = self.piece_indices()
+        planes[new_indices] = 1.0
+        planes = planes.reshape(12, 8, 8)
+        return planes
+
 
 def elo_to_plane(elo):
     AVG = 1500 # Approximate values, worth taking another
@@ -106,13 +114,10 @@ def tc_to_plane(tc):
     STDDEV = 200 # look at once a baseline is established
     return torch.full((1, 8, 8), (tc-AVG)/STDDEV)
 
+def eval_to_plane(eval):
+    return torch.full((1, 8, 8), eval) # check if passing next instead of current...
+
 def eval_delta(eval, next_eval, next_to_move):
     return torch.tensor([(eval-next_eval)*next_to_move*-1])
 
-def populate_piece_planes(board : Board) -> torch.Tensor:
-    planes = torch.zeros(12*64)
-    new_indices = board.piece_indices()
-    planes[new_indices] = 1.0
-    planes = planes.reshape(12, 8, 8)
-    return planes
 

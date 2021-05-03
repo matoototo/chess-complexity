@@ -20,9 +20,7 @@ net.load_state_dict(cpnt['model_state'])
 net.eval()
 
 while True:
-    b = parser.data.Board(input("FEN: "))
-    planes = parser.data.fen_to_planes(b)
-    planes = torch.cat((planes, parser.data.elo_to_plane(int(input("ELO: ")))))
-    planes = torch.cat((planes, parser.data.tc_to_plane(300)))
+    board = parser.data.Board(input("FEN: "))
+    planes = board.to_planes()
     planes = planes.reshape((1, 15, 8, 8)).to('cuda:0')
     print(net(planes))
