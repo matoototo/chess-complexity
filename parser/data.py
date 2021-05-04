@@ -1,5 +1,6 @@
 import torch
 import torch.utils.data
+import numpy as np
 from collections import defaultdict
 from torch.utils.data.dataloader import DataLoader
 
@@ -51,9 +52,11 @@ class PositionDataset(torch.utils.data.Dataset):
                 self.positions.append(Board(game, fen, eval))
                 if old_eval != None: # isn't first pos
                     self.labels.append(eval_delta(old_eval, eval, self.positions[-1].side_to_move()))
-
+        self.positions = np.array(self.positions)
+        self.labels = np.array(self.labels).reshape(len(self.labels), 1)
 
 class Game:
+    __slots__ = ['winner', 'welo', 'belo', 'tc']
     def __init__(self, winner, welo, belo, tc):
         self.winner = winner
         self.welo = welo
@@ -62,6 +65,7 @@ class Game:
 
 
 class Board:
+    __slots__ = ['game', 'eval', 'fen']
     def __init__(self, game, fen, eval):
         self.game = game
         self.eval = eval

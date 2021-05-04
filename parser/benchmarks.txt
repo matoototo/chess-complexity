@@ -58,3 +58,18 @@ run12 ~ run11
 lazy planes conversion sanity check
 adam 64x6x128
 3e-4
+
+run13 ~ run12
+less logging and higher LR
+adam 64x6x128
+6e-4
+
+run14
+larger baseline
+adam 128x10x128
+6e-4
+
+run15
+larger baseline
+adam 128x10x128
+3e-4
