@@ -45,6 +45,8 @@ class PositionDataset(torch.utils.data.Dataset):
                 fen = self.file.readline()
                 if (len(fen) < 5):
                     self.positions.pop() # pop last since it has no label
+                    self.labels[-1] = torch.tensor([0.0]) # the last position is not evaluated so the last label is wrong
+                                                          # setting it to result was also considered, but resignations make that a bad option
                     if (limit and len(self.positions) >= limit): return
                     break
                 old_eval = eval

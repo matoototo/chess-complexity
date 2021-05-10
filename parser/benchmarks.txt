@@ -72,4 +72,9 @@ adam 128x10x128
 run15
 larger baseline
 adam 128x10x128
-3e-4
+3e-4, 1e-4 at 1687571
+
+run16
+fixed last label bug
+adam 64x6x128
+3e-4, 1e-4 at 960k
