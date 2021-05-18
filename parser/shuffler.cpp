@@ -65,6 +65,10 @@ struct Data {
         last = false;
         std::string fen;
         getline(file, fen);
+        if (file.peek() == EOF) {
+            last = true;
+            return;
+        }
         if (fen.size() < 5) {
             current_game = next_game();
             last = true;
@@ -78,7 +82,7 @@ struct Data {
 
     std::vector<Position> populate_positions() {
         std::vector<Position> pos;
-        while ((pos.size() < shuffle_size || !last) && file) {
+        while ((pos.size() < shuffle_size || !last) && file.peek() != EOF) {
             next_position();
             if (last) {
                 pos.pop_back();
@@ -130,7 +134,7 @@ int main(int argc, char* argv[]) {
     while (!done) {
         done = true;
         for (auto it = file_vec.begin(); it != file_vec.end(); ++it) {
-            if (!it->file) continue;
+            if (it->file.peek() == EOF) continue;
             if (current_pos_count >= positions_per_file) {
                 out_file.close();
                 out_file.clear();
