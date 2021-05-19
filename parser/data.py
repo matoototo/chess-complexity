@@ -31,29 +31,19 @@ class PositionDataset(torch.utils.data.Dataset):
         self.positions = []
         self.labels = []
         while True:
-            try: # Ugly way to catch the end of the file
-                winner = int(self.file.readline())
-            except:
-                # swap files here?
-                break
-            welo = int(self.file.readline())
-            belo = int(self.file.readline())
-            tc = int(self.file.readline())
+            line = self.file.readline().split(',')
+            if (len(line) < 7): break
+            fen = line[0]
+            eval = float(line[1])
+            eval_next = float(line[2])
+            winner = int(line[3])
+            welo = int(line[4])
+            belo = int(line[5])
+            tc = int(line[6])
+            if (limit and len(self.positions) >= limit): break
             game = Game(winner, welo, belo, tc)
-            eval = None
-            while (True):
-                fen = self.file.readline()
-                if (len(fen) < 5):
-                    self.positions.pop() # pop last since it has no label
-                    self.labels[-1] = torch.tensor([0.0]) # the last position is not evaluated so the last label is wrong
-                                                          # setting it to result was also considered, but resignations make that a bad option
-                    if (limit and len(self.positions) >= limit): return
-                    break
-                old_eval = eval
-                eval = float(self.file.readline())
-                self.positions.append(Board(game, fen, eval))
-                if old_eval != None: # isn't first pos
-                    self.labels.append(eval_delta(old_eval, eval, self.positions[-1].side_to_move()))
+            self.positions.append(Board(game, fen, eval))
+            self.labels.append(eval_delta(eval, eval_next, self.positions[-1].side_to_move()))
         self.positions = np.array(self.positions)
         self.labels = np.array(self.labels).reshape(len(self.labels), 1)
 
@@ -124,6 +114,4 @@ def eval_to_plane(eval):
     return torch.full((1, 8, 8), eval) # check if passing next instead of current...
 
 def eval_delta(eval, next_eval, next_to_move):
-    return torch.tensor([(eval-next_eval)*next_to_move*-1])
-
-
+    return torch.tensor([(eval-next_eval)*next_to_move])
