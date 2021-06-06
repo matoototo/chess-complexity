@@ -77,4 +77,39 @@ adam 128x10x128
 run16
 fixed last label bug
 adam 64x6x128
-3e-4, 1e-4 at 960k
+3e-4, 1e-4 at 960k, 3e-5 at 1604k
+
+run17 ~ run16
+adamw wd = 1e-4
+adam 64x6x128
+3e-4
+
+run18 ~ run17
+trainable BN
+adam 64x6x128
+3e-4, 1e-4 at 2588934 (epoch #2)
+
+run19 ~ run18
+conv -> involution (naive)
+adam 64x6x128
+3e-4
+
+run20 ~ run19
+much better data shuffling
+adam 64x6x128
+3e-4, 1e-4 at 2030k
+
+run21 ~ run20
+larger network
+adam 128x10x128
+3e-4, 1e-4 at 2103k
+
+run22 ~ run20
+giving sgd another go
+sgd 64x6x128
+1e-2, 1e-3 at 448k
+
+run23 ~ run20
+trying mg optim
+mg 64x6x128
+3e-4, 3e-5 at 1763258, 3e-6 at 2608584
