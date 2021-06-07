@@ -9,7 +9,7 @@ import chess.engine
 import chess
 
 def transform_eval(score):
-    return str((2*score.wdl(model="lichess").white().expectation())-1.0)
+    return (2*score.wdl(model="lichess").white().expectation())-1.0
 
 def eval_fen(fen, engine: chess.engine.SimpleEngine, depth):
     eval = transform_eval(engine.analyse(chess.Board(fen), chess.engine.Limit(depth=depth))["score"])
@@ -19,23 +19,24 @@ def parse_tc(tc_string):
     tc_string = tc_string.split("+")
     if len(tc_string) == 1:
         return None
-    return str(int(tc_string[0])+40*int(tc_string[1])) + '\n'
+    return int(tc_string[0])+40*int(tc_string[1])
 
 def parse_res(res_string):
     res_string = res_string.split("-")
     if ("*" in res_string):
         return None
     if ("1/2" in res_string):
-        return "0\n"
-    return str(int(res_string[0])-int(res_string[1])) + '\n'
+        return 0
+    return int(res_string[0])-int(res_string[1])
 
-def parse_pgn(pgn, engine: chess.engine.SimpleEngine = None, depth = 20, zero_first = True):
+def parse_pgn(pgn, engine: chess.engine.SimpleEngine = None, depth = 20, zero_first = True, default_elo = 1500):
     """Constructs a List of Boards from the given PGN.
     If evaluations are not given in the PGN expects engine to be defined,
     which will then be used to evaluate the position(s) at specified depth.
     Due to a bug in python-chess, the startpos does not have an evaluation.
     By default it is set to 0.0, which can be avoided with the zero_first flag.
     If zero_first is set to False the method requires a valid engine attribute, as it will have to evaluate the position.
+    Unkown Elo ('?') are replaced by default_elo, which is by default 1500.
     """
     game = chess.pgn.read_game(pgn)
     positions = []
@@ -43,6 +44,8 @@ def parse_pgn(pgn, engine: chess.engine.SimpleEngine = None, depth = 20, zero_fi
     res = parse_res(game.headers["Result"])
     welo = game.headers["WhiteElo"]
     belo = game.headers["BlackElo"]
+    welo = int(welo) if welo != "?" else default_elo
+    belo = int(belo) if belo != "?" else default_elo
 
     g = data.Game(res, welo, belo, tc)
 
@@ -50,11 +53,11 @@ def parse_pgn(pgn, engine: chess.engine.SimpleEngine = None, depth = 20, zero_fi
     while (game != None):
         fen = game.board().fen()
         if game.eval():
-            eval = str((2*game.eval().wdl(model="lichess").white().expectation())-1.0)
+            eval = (2*game.eval().wdl(model="lichess").white().expectation())-1.0
         else:
             if first and zero_first:
                 first = not first
-                eval = "0.0"
+                eval = 0.0
             else:
                 eval = eval_fen(fen, engine, depth)
         positions.append(data.Board(g, fen, eval))
