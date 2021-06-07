@@ -26,9 +26,9 @@ class Model(nn.Module):
                 init.xavier_normal_(module.weight)
                 if module.bias is not None:
                     init.zeros_(module.bias)
-            # if isinstance(module, nn.BatchNorm2d):
-            #     init.ones_(module.weight)
-            #     init.zeros_(module.bias)
+            if isinstance(module, nn.BatchNorm2d):
+                init.ones_(module.weight)
+                init.zeros_(module.bias)
 
 
 class Block(nn.Module):
@@ -36,11 +36,11 @@ class Block(nn.Module):
         super().__init__()
         self.layers = nn.Sequential(
             OrderedDict([
-                ("conv1", nn.Conv2d(filters, filters, 3, padding=1, bias=True)),
-                ("bn1", nn.BatchNorm2d(filters, affine=False)),
+                ("conv1", nn.Conv2d(filters, filters, 3, padding=1, bias=False)),
+                ("bn1", nn.BatchNorm2d(filters, affine=True)),
                 ("relu1", nn.ReLU(inplace=True)),
-                ("conv2", nn.Conv2d(filters, filters, 3, padding=1, bias=True)),
-                ("bn2", nn.BatchNorm2d(filters, affine=False))
+                ("conv2", nn.Conv2d(filters, filters, 3, padding=1, bias=False)),
+                ("bn2", nn.BatchNorm2d(filters, affine=True))
             ])
         )
         self.relu2 = nn.ReLU(inplace=True)
@@ -55,8 +55,8 @@ class InputBlock(nn.Sequential):
     def __init__(self, planes, filters):
         super().__init__(
             OrderedDict([
-                ("conv1", nn.Conv2d(planes, filters, 3, padding=1, bias=True)),
-                ("bn1", nn.BatchNorm2d(filters, affine=False)),
+                ("conv1", nn.Conv2d(planes, filters, 3, padding=1, bias=False)),
+                ("bn1", nn.BatchNorm2d(filters, affine=True)),
                 ("relu1", nn.ReLU(inplace=True)),
             ])
         )
