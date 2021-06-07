@@ -16,14 +16,14 @@ def load_net(path):
     net.load_state_dict(chkpt["model_state"])
     return net
 
-def eval_data(net, dataset, bs = 128, shuffle = False):
+def eval_data(net, dataset, bs = 128, shuffle = False, cuda = True):
     """Evaluates every position in the InferDataset and returns a List of Board-eval pairs."""
     with no_grad():
         net.eval()
         data_loader = DataLoader(dataset, bs, shuffle)
         out = []
         for pos, indices in data_loader:
-            pos = pos.to('cuda:0')
+            if cuda: pos = pos.to('cuda:0')
             out += zip(net(pos).squeeze().tolist(), [dataset.positions[i] for i in indices])
     return out
 
