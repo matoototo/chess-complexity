@@ -14,6 +14,18 @@ def create_offsets():
 offsets = create_offsets()
 
 
+class InferDataset(torch.utils.data.Dataset):
+    def __init__(self, positions = []):
+        self.positions = np.array(positions)
+
+    def __getitem__(self, i):
+        """Returns the planes and their index in self.positions."""
+        return (self.positions[i].to_planes(), i)
+
+    def __len__(self):
+        return len(self.positions)
+
+
 class PositionDataset(torch.utils.data.Dataset):
     def __init__(self, filename):
         self.filename = filename
