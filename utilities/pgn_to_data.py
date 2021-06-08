@@ -12,6 +12,8 @@ def transform_eval(score):
     return (2*score.wdl(model="lichess").white().expectation())-1.0
 
 def eval_fen(fen, engine: chess.engine.SimpleEngine, depth):
+    if engine == None:
+        raise AttributeError("The passed position(s) don't have an evaluation, but an engine for evaluation was not defined.")
     eval = transform_eval(engine.analyse(chess.Board(fen), chess.engine.Limit(depth=depth))["score"])
     return eval
 
@@ -29,18 +31,20 @@ def parse_res(res_string):
         return 0
     return int(res_string[0])-int(res_string[1])
 
-def parse_pgn(pgn, engine: chess.engine.SimpleEngine = None, depth = 20, zero_first = True, default_elo = 1500):
+def parse_pgn(pgn, engine: chess.engine.SimpleEngine = None, depth = 20, zero_first = True, default_elo = 1500, default_tc = 600):
     """Constructs a List of Boards from the given PGN.
     If evaluations are not given in the PGN expects engine to be defined,
     which will then be used to evaluate the position(s) at specified depth.
     Due to a bug in python-chess, the startpos does not have an evaluation.
     By default it is set to 0.0, which can be avoided with the zero_first flag.
     If zero_first is set to False the method requires a valid engine attribute, as it will have to evaluate the position.
-    Unkown Elo ('?') are replaced by default_elo, which is by default 1500.
+    Unknown Elo ('?') are replaced by default_elo, which is by default 1500.
+    Likewise, unknown time controls are replaced by default_tc, which is by default 600.
     """
     game = chess.pgn.read_game(pgn)
     positions = []
     tc = parse_tc(game.headers["TimeControl"])
+    tc = tc if tc != None else default_tc
     res = parse_res(game.headers["Result"])
     welo = game.headers["WhiteElo"]
     belo = game.headers["BlackElo"]
