@@ -50,8 +50,10 @@ def parse_pgn(pgn, engine: chess.engine.SimpleEngine = None, depth = 20, zero_fi
     belo = game.headers["BlackElo"]
     welo = int(welo) if welo != "?" else default_elo
     belo = int(belo) if belo != "?" else default_elo
+    white = game.headers["White"]
+    black = game.headers["Black"]
 
-    g = data.Game(res, welo, belo, tc)
+    g = data.Game(res, welo, belo, tc, white, black)
 
     first = True
     while (game != None):

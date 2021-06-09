@@ -60,12 +60,14 @@ class PositionDataset(torch.utils.data.Dataset):
         self.labels = np.array(self.labels).reshape(len(self.labels), 1)
 
 class Game:
-    __slots__ = ['winner', 'welo', 'belo', 'tc']
-    def __init__(self, winner, welo, belo, tc):
+    __slots__ = ['winner', 'welo', 'belo', 'tc', 'white', 'black']
+    def __init__(self, winner, welo, belo, tc, white = "", black = ""):
         self.winner = winner
         self.welo = welo
         self.belo = belo
         self.tc = tc
+        self.white = white
+        self.black = black
 
 
 class Board:
@@ -74,6 +76,9 @@ class Board:
         self.game = game
         self.eval = eval
         self.fen = fen
+
+    def __repr__(self):
+        return self.fen
 
     def side_to_move(self):
         return 1.0 if self.fen.split(' ')[1] == "w" else -1.0
