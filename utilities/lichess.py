@@ -18,21 +18,22 @@ def get_game(id, token):
     """Returns the PGN of a game of the given Lichess game ID."""
     session = berserk.TokenSession(token)
     client = berserk.Client(session=session)
-    return client.games.export(id, as_pgn=True)
+    return client.games.export(id, as_pgn=True, evals="true")
 
 # only_analysed doesn't work for whatever reason. berserk bug?
-def player_games_since(username, token, since : datetime, only_analysed = False):
+def player_games_since(username, token, since : datetime, only_analysed = None):
     """Returns a generator of PGNs of games played by some player since some datetime.
-    To filter games with no analysis, use the only_analysed attribute (defaults to False)."""
+    To filter games with no analysis, use the only_analysed attribute (defaults to None)."""
+    only_analysed = "null" if only_analysed in [None, False] else "true" # berserk is broken, must cast to string manually...
     session = berserk.TokenSession(token)
     client = berserk.Client(session=session)
-    return client.games.export_by_player(username, as_pgn=True, since=berserk.utils.to_millis(since), analysed=only_analysed)
+    return client.games.export_by_player(username, as_pgn=True, since=int(berserk.utils.to_millis(since)), analysed=only_analysed, evals="true")
 
 def get_game_data(id, token, engine: chess.engine.SimpleEngine = None, depth = 20, zero_first = True, default_elo = 1500):
     """Returns List of Boards of the given Lichess game ID."""
     session = berserk.TokenSession(token)
     client = berserk.Client(session=session)
-    return parse_pgn(io.StringIO(client.games.export(id, as_pgn=True)), engine, depth, zero_first, default_elo)
+    return parse_pgn(io.StringIO(client.games.export(id, as_pgn=True)), engine, depth, zero_first, default_elo, evals="true")
 
 def eval_game_and_sort(pgn, net, engine: chess.engine.SimpleEngine = None, depth = 20, zero_first = True, default_elo = 1500):
     """Evaluates a given PGN with a model and sorts the positions by largest delta between expected and actual error.
