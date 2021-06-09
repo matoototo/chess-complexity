@@ -24,6 +24,7 @@ def eval_data(net, dataset, bs = 128, shuffle = False, cuda = True):
         out = []
         for pos, indices in data_loader:
             if cuda: pos = pos.to('cuda:0')
-            out += zip(net(pos).squeeze().tolist(), [dataset.positions[i] for i in indices])
+            eval = net(pos).tolist() if len(pos) == 1 else net(pos).squeeze().tolist()
+            out += zip(eval, [dataset.positions[i] for i in indices])
     return out
 
