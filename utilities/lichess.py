@@ -20,7 +20,6 @@ def get_game(id, token):
     client = berserk.Client(session=session)
     return client.games.export(id, as_pgn=True, evals="true")
 
-# only_analysed doesn't work for whatever reason. berserk bug?
 def player_games_since(username, token, since : datetime, only_analysed = None):
     """Returns a generator of PGNs of games played by some player since some datetime.
     To filter games with no analysis, use the only_analysed attribute (defaults to None)."""
@@ -37,15 +36,18 @@ def get_game_data(id, token, engine: chess.engine.SimpleEngine = None, depth = 2
 
 def eval_game_and_sort(pgn, net, engine: chess.engine.SimpleEngine = None, depth = 20, zero_first = True, default_elo = 1500):
     """Evaluates a given PGN with a model and sorts the positions by largest delta between expected and actual error.
-    Returns a List of 5-tuples: delta, eval, error, predicted_error, FEN."""
+    Returns a List of 3-tuples: error, predicted_error, Board."""
     data = parse_pgn(io.StringIO(pgn), engine, depth, zero_first, default_elo)
     evaluated = evaluator.eval_data(net, InferDataset(data))
     labeled = []
     for i in range(len(evaluated)-1):
         error = (evaluated[i][1].eval - evaluated[i+1][1].eval)*evaluated[i][1].side_to_move()
-        delta = error - evaluated[i][0]
-        labeled.append((delta, evaluated[i][1].eval, error, *evaluated[i]))
-    labeled.sort(key = lambda x : x[0])
+        labeled.append((error, *evaluated[i]))
+    labeled.sort(key = lambda x : x[0]-x[1])
     return labeled
 
+def name_filter(board, name):
+    """Filter predicate used to filter out those positions where name is not to-move."""
+    return (board.game.white == name and board.side_to_move() == 1.0) or \
+           (board.game.black == name and board.side_to_move() == -1.0)
 
