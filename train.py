@@ -16,7 +16,16 @@ data_base = os.path.abspath(sys.argv[2])
 checkpoint_base = os.path.abspath(sys.argv[3])
 log_base = os.path.abspath(sys.argv[4])
 
-files = os.listdir(data_base)
+if os.path.splitext(os.path.splitext(data_base)[0])[1] == ".tar":
+  import tarfile
+  MODE_TAR = True
+  data = tarfile.open(data_base, 'r:xz')
+  data_base = os.path.dirname(data_base)
+  files = data.getmembers()
+else:
+  MODE_TAR = False
+  files = os.listdir(data_base)
+print(files)
 
 run_dir = f"run{int(run_number):2d}"
 checkpoint_path = os.path.join(checkpoint_base, run_dir)
@@ -74,7 +83,7 @@ else:
     optim = torch.optim.Adam(net.parameters(), 3e-4)
     used = []
     steps = 0
-  
+
 test_dataset = PositionDataset(os.path.join(data_base, test_dataset_filename))
 test_dataset.parse_data(100000)
 test_loader = DataLoader(test_dataset, 1024, False, pin_memory=True, num_workers=2)
@@ -83,6 +92,9 @@ test_every = 500
 train_loss = 0
 for file in files:
     if file in ["0-100.tar.xz", ".ipynb_checkpoints"]: continue
+    if MODE_TAR:
+      data.extractall(data_base, [file])
+      file = file.name
     print(file)
     used.append(file)
     train_dataset = PositionDataset(os.path.join(data_base, file))
@@ -110,10 +122,11 @@ for file in files:
                 writer.flush()
                 train_loss = 0
     checkpoint.save(
-      steps, 
-      net.state_dict(), 
-      optim.state_dict(), 
-      used, net.args, 
+      steps,
+      net.state_dict(),
+      optim.state_dict(),
+      used, net.args,
       os.path.join(checkpoint_path, f"{steps}.pt")
     )
+    if MODE_TAR: os.remove(os.path.join(data_base, file))
 writer.close()
