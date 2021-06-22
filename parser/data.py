@@ -60,14 +60,15 @@ class PositionDataset(torch.utils.data.Dataset):
         self.labels = np.array(self.labels).reshape(len(self.labels), 1)
 
 class Game:
-    __slots__ = ['winner', 'welo', 'belo', 'tc', 'white', 'black']
-    def __init__(self, winner, welo, belo, tc, white = "", black = ""):
+    __slots__ = ['winner', 'welo', 'belo', 'tc', 'white', 'black', 'id']
+    def __init__(self, winner, welo, belo, tc, white = "", black = "", id = ""):
         self.winner = winner
         self.welo = welo
         self.belo = belo
         self.tc = tc
         self.white = white
         self.black = black
+        self.id = id
 
 
 class Board:

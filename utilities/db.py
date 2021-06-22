@@ -24,7 +24,9 @@ class PositionDatabase:
             eval REAL,
             err REAL,
             pred_err REAL,
-            player TEXT
+            player TEXT,
+            game_id TEXT,
+            PRIMARY KEY(FEN, game_id)
         )""")
 
         # Table for saving positions and their Elo as determined by binary search
@@ -38,8 +40,8 @@ class PositionDatabase:
 
     def insert_player_positions(self, positions):
         """Positions should be a List of 3-tuples with the values: error, predicted error, Board object."""
-        processed = [(x[2].fen, self.__player_elo(x[2]), x[2].eval, x[0], x[1], self.__player_name(x[2])) for x in positions]
-        self.cur.executemany("INSERT INTO player_positions VALUES (?, ?, ?, ?, ?, ?)", processed)
+        processed = [(x[2].fen, self.__player_elo(x[2]), x[2].eval, x[0], x[1], self.__player_name(x[2]), x[2].game.id) for x in positions]
+        self.cur.executemany("INSERT OR IGNORE INTO player_positions VALUES (?, ?, ?, ?, ?, ?, ?)", processed)
         self.con.commit()
 
     def __player_elo(self, board):
