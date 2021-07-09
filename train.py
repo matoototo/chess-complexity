@@ -8,13 +8,25 @@ import torch.optim
 import torch.utils.data
 import torch.nn.utils
 import torch.nn
-import os
-import sys
 
-run_number = sys.argv[1]
-data_base = os.path.abspath(sys.argv[2])
-checkpoint_base = os.path.abspath(sys.argv[3])
-log_base = os.path.abspath(sys.argv[4])
+import os
+import argparse
+import pathlib
+
+parser = argparse.ArgumentParser(description='Train a network for complexity prediction')
+parser.add_argument('--run', metavar='run number', type=int, help='the number of the training run, ex. 12', required=True)
+parser.add_argument('--db', metavar='path', type=pathlib.Path, help='path to the dir containing .data training files', required=True)
+parser.add_argument('--cp', metavar='path', type=pathlib.Path, help='path to the root dir of the checkpoints folders', required=True)
+parser.add_argument('--log', metavar='path', type=pathlib.Path, help='path to the root dir of the logs folders', required=True)
+parser.add_argument('--test', metavar='filepath', type=pathlib.Path, help='path to the testing .data file', required=False, default='shuffled_0.data')
+
+args = parser.parse_args()
+
+run_number = args.run
+data_base = os.path.abspath(args.db)
+checkpoint_base = os.path.abspath(args.cp)
+log_base = os.path.abspath(args.log)
+test_dataset_filename = args.test
 
 files = os.listdir(data_base)
 
@@ -25,7 +37,6 @@ log_path = os.path.join(log_base, run_dir)
 for p in [checkpoint_path, log_path]:
   if not os.path.exists(p): os.makedirs(p)
 
-test_dataset_filename = "shuffled_0.data"
 
 loss_func = torch.nn.MSELoss()
 writer = SummaryWriter(log_path, purge_step=287013)
@@ -74,7 +85,7 @@ else:
     optim = torch.optim.Adam(net.parameters(), 3e-4)
     used = []
     steps = 0
-  
+
 test_dataset = PositionDataset(os.path.join(data_base, test_dataset_filename))
 test_dataset.parse_data(100000)
 test_loader = DataLoader(test_dataset, 1024, False, pin_memory=True, num_workers=2)
@@ -82,7 +93,7 @@ test_loader = DataLoader(test_dataset, 1024, False, pin_memory=True, num_workers
 test_every = 500
 train_loss = 0
 for file in files:
-    if file in ["0-100.tar.xz", ".ipynb_checkpoints"]: continue
+    if file.split('.')[-1] != 'data': continue
     print(file)
     used.append(file)
     train_dataset = PositionDataset(os.path.join(data_base, file))
