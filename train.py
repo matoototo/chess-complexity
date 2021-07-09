@@ -9,14 +9,26 @@ import torch.utils.data
 import torch.nn.utils
 import torch.nn
 import os
+import sys
 
-checkpoint_path = "./checkpoints/run15/"
+run_number = sys.argv[1]
+data_base = os.path.abspath(sys.argv[2])
+checkpoint_base = os.path.abspath(sys.argv[3])
+log_base = os.path.abspath(sys.argv[4])
 
-path = "/mnt/melem/Linux-data/chess-complex/fens/2021-03/"
-files = os.listdir(path)
+files = os.listdir(data_base)
+
+run_dir = f"run{int(run_number):2d}"
+checkpoint_path = os.path.join(checkpoint_base, run_dir)
+log_path = os.path.join(log_base, run_dir)
+
+for p in [checkpoint_path, log_path]:
+  if not os.path.exists(p): os.makedirs(p)
+
+test_dataset_filename = "shuffled_0.data"
 
 loss_func = torch.nn.MSELoss()
-writer = SummaryWriter("./logs/run15/", purge_step=287013)
+writer = SummaryWriter(log_path, purge_step=287013)
 
 def test(test_loader : DataLoader, net : torch.nn.Module):
     net.eval()
@@ -62,19 +74,19 @@ else:
     optim = torch.optim.Adam(net.parameters(), 3e-4)
     used = []
     steps = 0
-
-
-test_dataset = PositionDataset("processed_0.data")
+  
+test_dataset = PositionDataset(os.path.join(data_base, test_dataset_filename))
 test_dataset.parse_data(100000)
 test_loader = DataLoader(test_dataset, 1024, False, pin_memory=True, num_workers=2)
 
 test_every = 500
 train_loss = 0
 for file in files:
+    if file in ["0-100.tar.xz", ".ipynb_checkpoints"]: continue
     print(file)
     used.append(file)
-    train_dataset = PositionDataset(path + file)
-    if file == "2021-03_processed_0.data":
+    train_dataset = PositionDataset(os.path.join(data_base, file))
+    if file == test_dataset_filename:
         train_dataset.file.seek(test_dataset.file.tell())
     while True:
         train_dataset.parse_data()
@@ -97,5 +109,11 @@ for file in files:
                 writer.add_scalar("Loss/train", train_loss/test_every, steps)
                 writer.flush()
                 train_loss = 0
-    checkpoint.save(steps, net.state_dict(), optim.state_dict(), used, net.args, checkpoint_path + f"{steps}.pt")
+    checkpoint.save(
+      steps, 
+      net.state_dict(), 
+      optim.state_dict(), 
+      used, net.args, 
+      os.path.join(checkpoint_path, f"{steps}.pt")
+    )
 writer.close()
