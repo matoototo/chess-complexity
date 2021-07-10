@@ -13,12 +13,23 @@ import os
 import argparse
 import pathlib
 
+
+def get_step_number(checkpoint_filename):
+    return int(cp.split('.')[0])
+
+
+def get_newest_checkpoint(path):
+    checkpoints = [os.path.join(path, f) for f in os.listdir(path)]
+    return max(checkpoints, key=os.path.getctime) if len(checkpoints) > 0 else None
+
+
 parser = argparse.ArgumentParser(description='Train a network for complexity prediction')
 parser.add_argument('--run', metavar='run number', type=int, help='the number of the training run, ex. 12', required=True)
 parser.add_argument('--db', metavar='path', type=pathlib.Path, help='path to the dir containing .data training files', required=True)
 parser.add_argument('--cp', metavar='path', type=pathlib.Path, help='path to the root dir of the checkpoints folders', required=True)
 parser.add_argument('--log', metavar='path', type=pathlib.Path, help='path to the root dir of the logs folders', required=True)
 parser.add_argument('--test', metavar='filepath', type=pathlib.Path, help='path to the testing .data file', required=False, default='shuffled_0.data')
+parser.add_argument('--branch', metavar='step number', type=int, help='branch at checkpoint given by filename by creating <run>[a..z]', required=False)
 
 args = parser.parse_args()
 
@@ -27,19 +38,45 @@ data_base = os.path.abspath(args.db)
 checkpoint_base = os.path.abspath(args.cp)
 log_base = os.path.abspath(args.log)
 test_dataset_filename = args.test
+branch = os.path.abspath(args.branch)
 
 files = os.listdir(data_base)
 
 run_dir = f"run{int(run_number):2d}"
 checkpoint_path = os.path.join(checkpoint_base, run_dir)
+
+if branch: # and branch != newest_checkpoint:
+    extension = 'a'
+    while (run_dir + extension) in checkpoints:
+        extension = chr(ord(extension) + 1)
+    run_dir_master = run_dir
+    run_dir += extension
+    checkpoint_path_master = os.path.join(checkpoint_base, run_dir_master)
+    checkpoint_path = os.path.join(checkpoint_base, run_dir)
+    print(f"branching to {run_dir}")
+
 log_path = os.path.join(log_base, run_dir)
-
 for p in [checkpoint_path, log_path]:
-  if not os.path.exists(p): os.makedirs(p)
+    if not os.path.exists(p): os.makedirs(p)
 
+if branch:
+    from shutil import copyfile
+
+    for cp in os.listdir(checkpoint_path_master):
+        step = get_step_number(cp)
+        if step > branch: continue
+
+        copyfile(os.path.join(checkpoint_path_master, cp), os.path.join(checkpoint_path, cp))
+
+    log_path_master = os.path.join(log_base, run_dir_master)
+    for log in os.listdir(log_path_master):
+        copyfile(os.path.join(log_path_master, log), os.path.join(log_path, log))
+
+newest_checkpoint = get_newest_checkpoint(checkpoint_path)
+purge_step = get_step_number(newest_checkpoint)
 
 loss_func = torch.nn.MSELoss()
-writer = SummaryWriter(log_path, purge_step=287013)
+writer = SummaryWriter(log_path, purge_step=purge_step)
 
 def test(test_loader : DataLoader, net : torch.nn.Module):
     net.eval()
@@ -64,12 +101,8 @@ def train(x, y, net : torch.nn.Module):
     return loss
 
 
-checkpoints = os.listdir(checkpoint_path)
-if len(checkpoints) != 0:
-    paths = [os.path.join(checkpoint_path, basename) for basename in checkpoints]
-    newest_checkpoint = max(paths, key=os.path.getctime)
+if newest_checkpoint:
     cpnt = checkpoint.load(newest_checkpoint)
-
     steps = cpnt['steps']
     net = Model(*cpnt['model_args']).to('cuda:0')
     net.load_state_dict(cpnt['model_state'])
