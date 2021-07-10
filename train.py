@@ -38,7 +38,7 @@ data_base = os.path.abspath(args.db)
 checkpoint_base = os.path.abspath(args.cp)
 log_base = os.path.abspath(args.log)
 test_dataset_filename = args.test
-branch = os.path.abspath(args.branch)
+branch = os.path.abspath(args.branch) if args.branch else None
 
 files = os.listdir(data_base)
 
