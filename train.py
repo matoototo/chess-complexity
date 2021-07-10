@@ -24,7 +24,7 @@ def get_newest_checkpoint(path):
 
 
 parser = argparse.ArgumentParser(description='Train a network for complexity prediction')
-parser.add_argument('--run', metavar='run number', type=int, help='the number of the training run, ex. 12', required=True)
+parser.add_argument('--run', metavar='run number', type=str, help='the number of the training run, ex. 12', required=True)
 parser.add_argument('--db', metavar='path', type=pathlib.Path, help='path to the dir containing .data training files', required=True)
 parser.add_argument('--cp', metavar='path', type=pathlib.Path, help='path to the root dir of the checkpoints folders', required=True)
 parser.add_argument('--log', metavar='path', type=pathlib.Path, help='path to the root dir of the logs folders', required=True)
@@ -38,16 +38,18 @@ data_base = os.path.abspath(args.db)
 checkpoint_base = os.path.abspath(args.cp)
 log_base = os.path.abspath(args.log)
 test_dataset_filename = args.test
-branch = os.path.abspath(args.branch) if args.branch else None
+branch = args.branch
 
 files = os.listdir(data_base)
 
-run_dir = f"run{int(run_number):2d}"
+run_dir = f"run{run_number}"
 checkpoint_path = os.path.join(checkpoint_base, run_dir)
+
+used_runs = os.listdir(checkpoint_base)
 
 if branch: # and branch != newest_checkpoint:
     extension = 'a'
-    while (run_dir + extension) in checkpoints:
+    while (run_dir + extension) in used_runs:
         extension = chr(ord(extension) + 1)
     run_dir_master = run_dir
     run_dir += extension
@@ -62,11 +64,8 @@ for p in [checkpoint_path, log_path]:
 if branch:
     from shutil import copyfile
 
-    for cp in os.listdir(checkpoint_path_master):
-        step = get_step_number(cp)
-        if step > branch: continue
-
-        copyfile(os.path.join(checkpoint_path_master, cp), os.path.join(checkpoint_path, cp))
+    cp = f"{branch}.pt"
+    copyfile(os.path.join(checkpoint_path_master, cp), os.path.join(checkpoint_path, cp))
 
     log_path_master = os.path.join(log_base, run_dir_master)
     for log in os.listdir(log_path_master):
@@ -107,7 +106,7 @@ if newest_checkpoint:
     net = Model(*cpnt['model_args']).to('cuda:0')
     net.load_state_dict(cpnt['model_state'])
 
-    optim = torch.optim.Adam(net.parameters(), 3e-4)
+    optim = torch.optim.SGD(net.parameters(), 3e-4)
     optim.load_state_dict(cpnt['optim_state'])
 
     used = cpnt['used_files']
@@ -115,7 +114,7 @@ if newest_checkpoint:
 else:
     net = Model(128, 10, 128).to('cuda:0')
     net.reset_parameters()
-    optim = torch.optim.Adam(net.parameters(), 3e-4)
+    optim = torch.optim.SGD(net.parameters(), 3e-4)
     used = []
     steps = 0
 
