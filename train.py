@@ -13,20 +13,23 @@ import os
 import argparse
 import pathlib
 
+import yaml
+
 parser = argparse.ArgumentParser(description='Train a network for complexity prediction')
 parser.add_argument('--run', metavar='run number', type=int, help='the number of the training run, ex. 12', required=True)
-parser.add_argument('--db', metavar='path', type=pathlib.Path, help='path to the dir containing .data training files', required=True)
-parser.add_argument('--cp', metavar='path', type=pathlib.Path, help='path to the root dir of the checkpoints folders', required=True)
-parser.add_argument('--log', metavar='path', type=pathlib.Path, help='path to the root dir of the logs folders', required=True)
-parser.add_argument('--test', metavar='filepath', type=pathlib.Path, help='path to the testing .data file', required=False, default='shuffled_0.data')
+parser.add_argument('--yaml', metavar='path', type=pathlib.Path, help='the path to the yaml file', required=True)
 
 args = parser.parse_args()
+config = yaml.load(open(args.yaml).read(), Loader=yaml.FullLoader)
+data_c = config['data']
+train_c = config['train']
+model_c = config['model']
 
 run_number = args.run
-data_base = os.path.abspath(args.db)
-checkpoint_base = os.path.abspath(args.cp)
-log_base = os.path.abspath(args.log)
-test_dataset_filename = args.test
+data_base = os.path.abspath(data_c['db_dir'])
+checkpoint_base = os.path.abspath(data_c['cp_dir'])
+log_base = os.path.abspath(data_c['log_dir'])
+test_dataset_file = os.path.abspath(data_c['test_file'])
 
 files = os.listdir(data_base)
 
@@ -35,11 +38,11 @@ checkpoint_path = os.path.join(checkpoint_base, run_dir)
 log_path = os.path.join(log_base, run_dir)
 
 for p in [checkpoint_path, log_path]:
-  if not os.path.exists(p): os.makedirs(p)
+    if not os.path.exists(p): os.makedirs(p)
 
 
 loss_func = torch.nn.MSELoss()
-writer = SummaryWriter(log_path, purge_step=287013)
+writer = SummaryWriter(log_path, purge_step=1728110)
 
 def test(test_loader : DataLoader, net : torch.nn.Module):
     net.eval()
@@ -74,30 +77,38 @@ if len(checkpoints) != 0:
     net = Model(*cpnt['model_args']).to('cuda:0')
     net.load_state_dict(cpnt['model_state'])
 
-    optim = torch.optim.Adam(net.parameters(), 3e-4)
+    if train_c['optim'] == 'Adam':
+        optim = torch.optim.Adam(net.parameters(), train_c['lr'])
+    elif train_c['optim'] == 'SGD':
+        optim = torch.optim.SGD(net.parameters(), train_c['lr'])
+
     optim.load_state_dict(cpnt['optim_state'])
 
     used = cpnt['used_files']
     files = list(filter(lambda x : x not in used, files))
 else:
-    net = Model(128, 10, 128).to('cuda:0')
+    net = Model(model_c['filters'], model_c['blocks'], model_c['head']).to('cuda:0')
     net.reset_parameters()
-    optim = torch.optim.Adam(net.parameters(), 3e-4)
+    if train_c['optim'] == 'Adam':
+        optim = torch.optim.Adam(net.parameters(), train_c['lr'])
+    elif train_c['optim'] == 'SGD':
+        optim = torch.optim.SGD(net.parameters(), train_c['lr'])
     used = []
     steps = 0
 
-test_dataset = PositionDataset(os.path.join(data_base, test_dataset_filename))
-test_dataset.parse_data(100000)
-test_loader = DataLoader(test_dataset, 1024, False, pin_memory=True, num_workers=2)
+test_dataset = PositionDataset(test_dataset_file)
+test_dataset.parse_data(train_c['test_size'])
+test_loader = DataLoader(test_dataset, train_c['bs'], False, pin_memory=True, num_workers=train_c['num_workers'])
 
-test_every = 500
+test_every = train_c['test_every']
 train_loss = 0
 for file in files:
     if file.split('.')[-1] != 'data': continue
     print(file)
     used.append(file)
     train_dataset = PositionDataset(os.path.join(data_base, file))
-    if file == test_dataset_filename:
+    if file == test_dataset_file.split('/')[-1]:
+        print("skipping")
         train_dataset.file.seek(test_dataset.file.tell())
     while True:
         train_dataset.parse_data()
@@ -105,11 +116,11 @@ for file in files:
         if (len(train_dataset) < 100000):
             print("throwing!", len(train_dataset))
             break
-        loader = DataLoader(train_dataset, 1024, True, pin_memory=True, drop_last=True, num_workers=2)
+        loader = DataLoader(train_dataset, train_c['bs'], True, pin_memory=True, drop_last=True, num_workers=train_c['num_workers'])
         for x, y in loader:
             train_loss += train(x, y, net)
             # norm = torch.nn.utils.clip_grad_norm_(net.parameters(), 4.0)
-            norm = torch.nn.utils.clip_grad_norm_(net.parameters(), 4.0)
+            norm = torch.nn.utils.clip_grad_norm_(net.parameters(), train_c['grad_norm'])
             optim.step()
             steps += 1
             if (steps%test_every == 0):
@@ -121,10 +132,10 @@ for file in files:
                 writer.flush()
                 train_loss = 0
     checkpoint.save(
-      steps, 
-      net.state_dict(), 
-      optim.state_dict(), 
-      used, net.args, 
+      steps,
+      net.state_dict(),
+      optim.state_dict(),
+      used, net.args,
       os.path.join(checkpoint_path, f"{steps}.pt")
     )
 writer.close()
