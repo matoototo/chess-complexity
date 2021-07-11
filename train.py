@@ -68,6 +68,7 @@ def train(x, y, net : torch.nn.Module):
 
 
 checkpoints = os.listdir(checkpoint_path)
+opt_map = {'Adam': torch.optim.Adam, 'SGD': torch.optim.SGD}
 if len(checkpoints) != 0:
     paths = [os.path.join(checkpoint_path, basename) for basename in checkpoints]
     newest_checkpoint = max(paths, key=os.path.getctime)
@@ -76,12 +77,7 @@ if len(checkpoints) != 0:
     steps = cpnt['steps']
     net = Model(*cpnt['model_args']).to('cuda:0')
     net.load_state_dict(cpnt['model_state'])
-
-    if train_c['optim'] == 'Adam':
-        optim = torch.optim.Adam(net.parameters(), train_c['lr'])
-    elif train_c['optim'] == 'SGD':
-        optim = torch.optim.SGD(net.parameters(), train_c['lr'])
-
+    optim = opt_map[train_c['optim']](net.parameters(), train_c['lr'])
     optim.load_state_dict(cpnt['optim_state'])
 
     used = cpnt['used_files']
@@ -89,10 +85,7 @@ if len(checkpoints) != 0:
 else:
     net = Model(model_c['filters'], model_c['blocks'], model_c['head']).to('cuda:0')
     net.reset_parameters()
-    if train_c['optim'] == 'Adam':
-        optim = torch.optim.Adam(net.parameters(), train_c['lr'])
-    elif train_c['optim'] == 'SGD':
-        optim = torch.optim.SGD(net.parameters(), train_c['lr'])
+    optim = opt_map[train_c['optim']](net.parameters(), train_c['lr'])
     used = []
     steps = 0
 
