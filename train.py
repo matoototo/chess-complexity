@@ -24,6 +24,7 @@ config = yaml.load(open(args.yaml).read(), Loader=yaml.FullLoader)
 data_c = config['data']
 train_c = config['train']
 model_c = config['model']
+if 'head_v2' not in model_c: model_c['head_v2'] = False
 
 run_number = args.run
 data_base = os.path.abspath(data_c['db_dir'])
@@ -83,7 +84,6 @@ if len(checkpoints) != 0:
     used = cpnt['used_files']
     files = list(filter(lambda x : x not in used, files))
 else:
-    net = Model(model_c['filters'], model_c['blocks'], model_c['head']).to('cuda:0')
     net.reset_parameters()
     optim = opt_map[train_c['optim']](net.parameters(), train_c['lr'])
     used = []

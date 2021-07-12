@@ -20,4 +20,5 @@ model:
     filters: 32
     blocks: 4
     head: 32
+    head_v2: true # {true | false}, if missing assumes 'false'
 ...
