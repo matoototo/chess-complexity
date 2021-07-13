@@ -102,6 +102,7 @@ class Board:
         planes = torch.cat((planes, elo_to_plane(self.game.welo if to_move == 1.0 else self.game.belo)))
         planes = torch.cat((planes, tc_to_plane(self.game.tc)))
         planes = torch.cat((planes, eval_to_plane(self.eval)))
+        planes = torch.cat((planes, self.populate_attackers_planes()))
         return planes
 
     def fen_to_planes(self):
@@ -117,6 +118,18 @@ class Board:
         planes = planes.reshape(12, 8, 8)
         return planes
 
+    def populate_attackers_planes(self) -> torch.Tensor:
+        from chess import BaseBoard
+        b = BaseBoard(self.fen.split(' ')[0])
+        attackers_w = []
+        attackers_b = []
+        for i in range(64):
+            w_att = bin(b.attackers_mask(True, 63-i)).count("1")
+            b_att = bin(b.attackers_mask(False, 63-i)).count("1")
+            attackers_w.append(w_att)
+            attackers_b.append(b_att)
+        attackers_w += attackers_b
+        return torch.reshape(torch.Tensor(attackers_w), (2, 8, 8)).float()
 
 def elo_to_plane(elo):
     AVG = 1500 # Approximate values, worth taking another
