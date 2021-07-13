@@ -84,6 +84,7 @@ if len(checkpoints) != 0:
     used = cpnt['used_files']
     files = list(filter(lambda x : x not in used, files))
 else:
+    net = Model(model_c['filters'], model_c['blocks'], model_c['head'], model_c['head_v2']).to('cuda:0')
     net.reset_parameters()
     optim = opt_map[train_c['optim']](net.parameters(), train_c['lr'])
     used = []
