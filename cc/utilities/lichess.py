@@ -8,7 +8,7 @@ from cc.utilities.db import PositionDatabase
 import chess
 import berserk
 import berserk.utils
-import utilities.evaluator as evaluator
+from cc.utilities import evaluator
 from datetime import date, datetime
 
 def get_game(id, token):
