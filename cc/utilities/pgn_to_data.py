@@ -1,8 +1,6 @@
 import sys, os
 
-sys.path.append(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'parser')))
-
-import data
+import cc.parser.data as data
 
 import chess.pgn
 import chess.engine
