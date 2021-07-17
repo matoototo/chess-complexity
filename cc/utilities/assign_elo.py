@@ -22,6 +22,6 @@ def naive_assign(net, dataset : PositionDataset, target = 0.2, tc = 600):
             planes = planes.to('cuda:0')
             out = torch.max(net(planes), torch.tensor(0.05).to('cuda:0'))
             min = torch.argmin(torch.abs(out-target)).item()
-            assigned.append({ 'fen': dataset.positions[i].fen, 'elo': i_to_elo(min)})
+            assigned.append({ 'fen': dataset.positions[i].fen, 'elo': i_to_elo(min), 'eval': dataset.positions[i].eval})
     return assigned
 
