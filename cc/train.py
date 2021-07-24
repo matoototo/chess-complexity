@@ -81,6 +81,9 @@ if len(checkpoints) != 0:
     optim = opt_map[train_c['optim']](net.parameters(), train_c['lr'])
     optim.load_state_dict(cpnt['optim_state'])
 
+    for g in optim.param_groups:
+        g['lr'] = train_c['lr']
+
     used = cpnt['used_files']
     files = list(filter(lambda x : x not in used, files))
 else:
