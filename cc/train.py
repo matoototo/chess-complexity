@@ -18,6 +18,7 @@ import yaml
 parser = argparse.ArgumentParser(description='Train a network for complexity prediction')
 parser.add_argument('--run', metavar='run number', type=int, help='the number of the training run, ex. 12', required=True)
 parser.add_argument('--yaml', metavar='path', type=pathlib.Path, help='the path to the yaml file', required=True)
+parser.add_argument('--empty-used', help='if present, empties the list of used files (usually done at end of epoch)', action='store_true')
 
 args = parser.parse_args()
 config = yaml.load(open(args.yaml).read(), Loader=yaml.FullLoader)
@@ -31,6 +32,7 @@ data_base = os.path.abspath(data_c['db_dir'])
 checkpoint_base = os.path.abspath(data_c['cp_dir'])
 log_base = os.path.abspath(data_c['log_dir'])
 test_dataset_file = os.path.abspath(data_c['test_file'])
+empty_used = args.empty_used
 
 files = os.listdir(data_base)
 
@@ -85,6 +87,7 @@ if len(checkpoints) != 0:
         g['lr'] = train_c['lr']
 
     used = cpnt['used_files']
+    if empty_used: used = []
     files = list(filter(lambda x : x not in used, files))
 else:
     net = Model(model_c['filters'], model_c['blocks'], model_c['head'], model_c['head_v2']).to('cuda:0')
