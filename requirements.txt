@@ -1,0 +1,6 @@
+python_chess==0.28.3
+berserk==0.10.0
+torch==1.9.0
+numpy==1.17.0
+chess==1.6.1
+PyYAML==5.4.1
