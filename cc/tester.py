@@ -1,8 +1,8 @@
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data.dataloader import DataLoader
-from model.model import Model, ComplexityHead
-import parser.data
-import checkpoint
+from cc.model.model import Model, ComplexityHead
+from cc.parser import data
+from cc import checkpoint
 import torch
 import torch.optim
 import torch.utils.data
