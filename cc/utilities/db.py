@@ -1,4 +1,59 @@
 import sqlite3
+import json
+
+class PuzzleDatabase:
+    """A class for storing and retrieving positions.
+        ## Attribute descriptions
+        - FEN - FEN string
+        - Elo - Elo given as input to the model
+        - eval - Computer evaluation of the position, scaled to WR
+        - err - Human error, calculated as eval(t+1)-eval(t)
+        - pred_err - The predicted error by the model
+        - player - Player username
+        - threshold - The pred_err according to which the Elo of the position was determined"""
+
+    def __init__(self, path):
+        """Creates (or opens if exists) a database at given path."""
+        self.con = sqlite3.connect(path)
+        self.cur = self.con.cursor()
+
+        # Table for saving positions and their Elo as determined by binary search
+        self.cur.execute(
+        f"""CREATE TABLE IF NOT EXISTS puzzles (
+            id INTEGER PRIMARY KEY,
+            FEN TEXT,
+            Elo REAL,
+            eval REAL,
+            threshold REAL,
+            UNIQUE(FEN, threshold)
+        )""")
+
+        # Table for saving players and their puzzle Elo
+        self.cur.execute(
+        f"""CREATE TABLE IF NOT EXISTS players (
+            id INTEGER PRIMARY KEY,
+            username TEXT,
+            Elo REAL DEFAULT 1500.0,
+            UNIQUE(username)
+        )""")
+
+        # Table for saving the player puzzle attempts
+        self.cur.execute(
+        """CREATE TABLE IF NOT EXISTS attempts (
+            player_id INTEGER REFERENCES players(id) ON DELETE CASCADE,
+            puzzle_id INTEGER REFERENCES puzzles(id) ON DELETE CASCADE,
+            delta REAL,
+            PRIMARY KEY(player_id, puzzle_id)
+        )""")
+
+    def insert_json(self, path, threshold):
+        """Inserts puzzles found in the given .json to the database, with a given threshold.
+            Format of the .json is given by assign_elo.py."""
+        puzzles = json.load(open(path, 'r'))
+        puzzles = [(x['fen'], x['elo'], x['eval'], threshold) for x in puzzles]
+        self.cur.executemany("INSERT OR IGNORE INTO puzzles VALUES (NULL, ?, ?, ?, ?)", puzzles)
+        self.con.commit()
+
 
 class PositionDatabase:
     """A class for storing and retrieving positions.
@@ -27,22 +82,6 @@ class PositionDatabase:
             player TEXT,
             game_id TEXT,
             PRIMARY KEY(FEN, game_id)
-        )""")
-
-        # Table for saving positions and their Elo as determined by binary search
-        self.cur.execute(
-        f"""CREATE TABLE IF NOT EXISTS calibrated_positions (
-            FEN TEXT,
-            Elo REAL,
-            eval REAL,
-            threshold REAL
-        )""")
-
-        # Table for saving players and their puzzle Elo
-        self.cur.execute(
-        f"""CREATE TABLE IF NOT EXISTS players (
-            username TEXT,
-            Elo REAL DEFAULT 1500.0
         )""")
 
     def insert_player_positions(self, positions):
