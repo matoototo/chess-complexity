@@ -34,6 +34,8 @@ class PuzzleDatabase:
             id INTEGER PRIMARY KEY,
             username TEXT,
             Elo REAL DEFAULT 1500.0,
+            RD REAL DEFAULT 200.0,
+            vol REAL DEFAULT 0.06,
             UNIQUE(username)
         )""")
 
