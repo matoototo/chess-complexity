@@ -28,6 +28,15 @@ class PuzzleDatabase:
             UNIQUE(FEN, threshold)
         )""")
 
+        # Table for saving the top 10 moves (according to multipv at depth 20) and their evaluations
+        self.cur.execute(
+        f"""CREATE TABLE IF NOT EXISTS moves (
+            id INTEGER PRIMARY KEY,
+            puzzle_id INTEGER REFERENCES puzzles(id) ON DELETE CASCADE,
+            move STRING,
+            eval REAL
+        )""")
+
         # Table for saving players and their puzzle Elo
         self.cur.execute(
         f"""CREATE TABLE IF NOT EXISTS players (
@@ -49,11 +58,17 @@ class PuzzleDatabase:
         )""")
 
     def insert_json(self, path, threshold):
-        """Inserts puzzles found in the given .json to the database, with a given threshold.
+        """Inserts puzzles and moves found in the given .json to the database, with a given threshold.
             Format of the .json is given by assign_elo.py."""
         puzzles = json.load(open(path, 'r'))
+        moves = { x['fen'] : x['moves'] for x in puzzles }
         puzzles = [(x['fen'], x['elo'], x['eval'], threshold) for x in puzzles]
-        self.cur.executemany("INSERT OR IGNORE INTO puzzles VALUES (NULL, ?, ?, ?, ?)", puzzles)
+        for puzzle in puzzles:
+            self.cur.execute("INSERT OR IGNORE INTO puzzles VALUES (NULL, ?, ?, ?, ?)", puzzle)
+            puzzle_id = self.cur.lastrowid
+            if self.cur.rowcount > 0:
+                insert_moves = [(puzzle_id, move['move'], move['eval']) for move in moves[puzzle[0]]]
+                self.cur.executemany("INSERT OR IGNORE INTO moves VALUES (NULL, ?, ?, ?)", insert_moves)
         self.con.commit()
 
 
