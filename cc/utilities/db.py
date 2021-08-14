@@ -60,9 +60,10 @@ class PuzzleDatabase:
     def insert_json(self, path, threshold):
         """Inserts puzzles and moves found in the given .json to the database, with a given threshold.
             Format of the .json is given by assign_elo.py."""
+        get_eval = lambda fen: moves[fen][0]['eval']
         puzzles = json.load(open(path, 'r'))
         moves = { x['fen'] : x['moves'] for x in puzzles }
-        puzzles = [(x['fen'], x['elo'], x['eval'], threshold) for x in puzzles]
+        puzzles = [(x['fen'], x['elo'], get_eval(x['fen']), threshold) for x in puzzles]
         for puzzle in puzzles:
             self.cur.execute("INSERT OR IGNORE INTO puzzles VALUES (NULL, ?, ?, ?, ?)", puzzle)
             puzzle_id = self.cur.lastrowid
