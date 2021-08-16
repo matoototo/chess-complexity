@@ -15,11 +15,23 @@ import pathlib
 
 
 def get_step_number(checkpoint_filename):
-    return int(cp.split('.')[0])
+    """Get a checkpoint's step number from its filename.
+
+    Arguments:
+    checkpoint_filename -- the checkpoint's filename, e.g. 1752598.pt
+    """
+    return int(checkpoint_filename.split('.')[0])
 
 
-def get_newest_checkpoint(path):
-    checkpoints = [os.path.join(path, f) for f in os.listdir(path)]
+def get_newest_checkpoint(directory):
+    """Get the most recent checkpoint from directory.
+
+    Arguments:
+    directory -- path to a directory containing checkpoints
+
+    Returns the checkpoint's filename if there is at least one checkpoint, None otherwise.
+    """
+    checkpoints = [os.directory.join(directory, f) for f in os.listdir(directory)]
     return max(checkpoints, key=os.path.getctime) if len(checkpoints) > 0 else None
 
 
@@ -29,7 +41,7 @@ parser.add_argument('--db', metavar='path', type=pathlib.Path, help='path to the
 parser.add_argument('--cp', metavar='path', type=pathlib.Path, help='path to the root dir of the checkpoints folders', required=True)
 parser.add_argument('--log', metavar='path', type=pathlib.Path, help='path to the root dir of the logs folders', required=True)
 parser.add_argument('--test', metavar='filepath', type=pathlib.Path, help='path to the testing .data file', required=False, default='shuffled_0.data')
-parser.add_argument('--branch', metavar='step number', type=int, help='branch at checkpoint given by filename by creating <run>[a..z]', required=False)
+parser.add_argument('--branch', metavar='step number', type=int, help='branch at checkpoint given by step number by creating <stepn>[a..z]', required=False)
 
 args = parser.parse_args()
 
@@ -47,7 +59,7 @@ checkpoint_path = os.path.join(checkpoint_base, run_dir)
 
 used_runs = os.listdir(checkpoint_base)
 
-if branch: # and branch != newest_checkpoint:
+if branch:
     extension = 'a'
     while (run_dir + extension) in used_runs:
         extension = chr(ord(extension) + 1)
