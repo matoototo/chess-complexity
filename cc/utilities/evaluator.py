@@ -1,10 +1,7 @@
-import sys, os, io
+import sys, os
 
-sys.path.append(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')))
-sys.path.append(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'parser')))
-
-import checkpoint
-import model.model as model
+from cc import checkpoint
+from cc.model import model
 
 from torch import no_grad
 from torch.utils.data.dataloader import DataLoader

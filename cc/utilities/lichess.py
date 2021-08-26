@@ -1,18 +1,14 @@
 import sys, os, io
 
-sys.path.append(sys.path.append(os.path.dirname(os.path.realpath(__file__))))
-sys.path.append(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')))
-sys.path.append(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'parser')))
-
-from utilities.pgn_to_data import parse_pgn
-from utilities.API_TOKEN import API_TOKEN
-from data import InferDataset
-from db import PositionDatabase
+from cc.utilities.pgn_to_data import parse_pgn
+from cc.utilities.API_TOKEN import API_TOKEN
+from cc.parser.data import InferDataset
+from cc.utilities.db import PositionDatabase
 
 import chess
 import berserk
 import berserk.utils
-import utilities.evaluator as evaluator
+from cc.utilities import evaluator
 from datetime import date, datetime
 
 def get_game(id, token):

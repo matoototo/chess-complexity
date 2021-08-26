@@ -4,14 +4,15 @@ from collections import OrderedDict
 import torch.nn.init as init
 
 class Model(nn.Module):
-    def __init__(self, filters, blocks, head_neurons):
+    def __init__(self, filters, blocks, head_neurons, head_v2 = False):
         super().__init__()
-        self.args = (filters, blocks, head_neurons)
+        self.args = (filters, blocks, head_neurons, head_v2)
         self.input = InputBlock(16, filters)
         self.blocks = nn.Sequential(
             OrderedDict([(f"block{i}", Block(filters)) for i in range(blocks)])
         )
-        self.output = ComplexityHead(filters, head_neurons)
+        if head_v2: self.output = ComplexityHeadV2(filters, head_neurons)
+        else: self.output = ComplexityHead(filters, head_neurons)
         self.reset_parameters()
 
     def forward(self, x):
@@ -71,3 +72,14 @@ class ComplexityHead(nn.Sequential):
             ('lin2', nn.Linear(neurons, 1))
         ]))
 
+class ComplexityHeadV2(nn.Sequential):
+    def __init__(self, filters, neurons):
+        super().__init__(OrderedDict([
+            ("conv1", nn.Conv2d(filters, 1, 1, bias=False)),
+            ("bn1", nn.BatchNorm2d(1, affine=True)),
+            ("relu1", nn.ReLU(inplace=True)),
+            ('flatten', nn.Flatten()),
+            ('lin1', nn.Linear(64, neurons)),
+            ('relu1', nn.ReLU(inplace=True)),
+            ('lin2', nn.Linear(neurons, 1))
+        ]))

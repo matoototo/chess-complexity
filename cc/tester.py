@@ -1,8 +1,8 @@
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data.dataloader import DataLoader
-from model.model import Model, ComplexityHead
-import parser.data
-import checkpoint
+from cc.model.model import Model, ComplexityHead
+from cc.parser import data
+from cc import checkpoint
 import torch
 import torch.optim
 import torch.utils.data
@@ -39,11 +39,11 @@ class Prediction:
         self.pred = pred
 
 
-dataset = parser.data.PositionDataset("/mnt/melem/Linux-data/chess-complex/fens/2021-04/2021-04_processed_0.data")
+dataset = data.PositionDataset("/mnt/melem/Linux-data/chess-complex/fens/2021-04/2021-04_processed_0.data")
 dataset.parse_data(10000)
 outputs = []
 for x in dataset.positions:
-    game = parser.data.Game(1.0, 1500, 1500, 600)
+    game = data.Game(1.0, 1500, 1500, 600)
     x.game = game
     outputs.append(Prediction(x, net(x.to_planes().reshape((1, 16, 8, 8)).to('cuda:0')).item()))
 
