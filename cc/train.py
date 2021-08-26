@@ -19,6 +19,27 @@ parser = argparse.ArgumentParser(description='Train a network for complexity pre
 parser.add_argument('--run', metavar='run number', type=int, help='the number of the training run, ex. 12', required=True)
 parser.add_argument('--yaml', metavar='path', type=pathlib.Path, help='the path to the yaml file', required=True)
 parser.add_argument('--empty-used', help='if present, empties the list of used files (usually done at end of epoch)', action='store_true')
+parser.add_argument('--branch', metavar='step number', type=int, help='branch at checkpoint given by step number by creating <stepn>[a..z]', required=False)
+
+def get_step_number(checkpoint_filename):
+    """Get a checkpoint's step number from its filename.
+
+    Arguments:
+    checkpoint_filename -- the checkpoint's filename, e.g. 1752598.pt
+    """
+    return int(checkpoint_filename.split('.')[0])
+
+
+def get_newest_checkpoint(directory):
+    """Get the most recent checkpoint from directory.
+
+    Arguments:
+    directory -- path to a directory containing checkpoints
+
+    Returns the checkpoint's filename if there is at least one checkpoint, None otherwise.
+    """
+    checkpoints = [os.directory.join(directory, f) for f in os.listdir(directory)]
+    return max(checkpoints, key=os.path.getctime) if len(checkpoints) > 0 else None
 
 args = parser.parse_args()
 config = yaml.load(open(args.yaml).read(), Loader=yaml.FullLoader)
@@ -33,19 +54,44 @@ checkpoint_base = os.path.abspath(data_c['cp_dir'])
 log_base = os.path.abspath(data_c['log_dir'])
 test_dataset_file = os.path.abspath(data_c['test_file'])
 empty_used = args.empty_used
+branch = args.branch
 
 files = os.listdir(data_base)
 
-run_dir = f"run{int(run_number):2d}"
+run_dir = f"run{run_number}"
 checkpoint_path = os.path.join(checkpoint_base, run_dir)
-log_path = os.path.join(log_base, run_dir)
 
+used_runs = os.listdir(checkpoint_base)
+
+if branch:
+    extension = 'a'
+    while (run_dir + extension) in used_runs:
+        extension = chr(ord(extension) + 1)
+    run_dir_master = run_dir
+    run_dir += extension
+    checkpoint_path_master = os.path.join(checkpoint_base, run_dir_master)
+    checkpoint_path = os.path.join(checkpoint_base, run_dir)
+    print(f"branching to {run_dir}")
+
+log_path = os.path.join(log_base, run_dir)
 for p in [checkpoint_path, log_path]:
     if not os.path.exists(p): os.makedirs(p)
 
+if branch:
+    from shutil import copyfile
+
+    cp = f"{branch}.pt"
+    copyfile(os.path.join(checkpoint_path_master, cp), os.path.join(checkpoint_path, cp))
+
+    log_path_master = os.path.join(log_base, run_dir_master)
+    for log in os.listdir(log_path_master):
+        copyfile(os.path.join(log_path_master, log), os.path.join(log_path, log))
+
+newest_checkpoint = get_newest_checkpoint(checkpoint_path)
+purge_step = get_step_number(newest_checkpoint)
 
 loss_func = torch.nn.MSELoss()
-writer = SummaryWriter(log_path, purge_step=1728110)
+writer = SummaryWriter(log_path, purge_step=purge_step)
 
 def test(test_loader : DataLoader, net : torch.nn.Module):
     net.eval()
@@ -70,13 +116,9 @@ def train(x, y, net : torch.nn.Module):
     return loss
 
 
-checkpoints = os.listdir(checkpoint_path)
 opt_map = {'Adam': torch.optim.Adam, 'SGD': torch.optim.SGD}
-if len(checkpoints) != 0:
-    paths = [os.path.join(checkpoint_path, basename) for basename in checkpoints]
-    newest_checkpoint = max(paths, key=os.path.getctime)
+if newest_checkpoint:
     cpnt = checkpoint.load(newest_checkpoint)
-
     steps = cpnt['steps']
     net = Model(*cpnt['model_args']).to('cuda:0')
     net.load_state_dict(cpnt['model_state'])
