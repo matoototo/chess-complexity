@@ -57,6 +57,16 @@ class PuzzleDatabase:
             PRIMARY KEY(player_id, puzzle_id)
         )""")
 
+        # Table for saving data about users
+        self.cur.execute(
+        """CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY,
+            name VARCHAR NOT NULL UNIQUE,
+            email VARCHAR NOT NULL UNIQUE,
+            password VARCHAR NOT NULL,
+            lichess VARCHAR UNIQUE
+        )""")
+
     def insert_json(self, path, threshold):
         """Inserts puzzles and moves found in the given .json to the database, with a given threshold.
             Format of the .json is given by assign_elo.py."""
