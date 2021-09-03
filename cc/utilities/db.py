@@ -37,15 +37,17 @@ class PuzzleDatabase:
             eval REAL
         )""")
 
-        # Table for saving players and their puzzle Elo
+        # Table for saving users and their puzzle Elo
         self.cur.execute(
-        f"""CREATE TABLE IF NOT EXISTS players (
+        f"""CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY,
-            username TEXT,
+            name VARCHAR NOT NULL UNIQUE,
+            email VARCHAR NOT NULL UNIQUE,
+            password VARCHAR NOT NULL,
+            lichess VARCHAR UNIQUE,
             Elo REAL DEFAULT 1500.0,
             RD REAL DEFAULT 200.0,
-            vol REAL DEFAULT 0.06,
-            UNIQUE(username)
+            vol REAL DEFAULT 0.06
         )""")
 
         # Table for saving the player puzzle attempts
@@ -55,16 +57,6 @@ class PuzzleDatabase:
             puzzle_id INTEGER REFERENCES puzzles(id) ON DELETE CASCADE,
             delta REAL,
             PRIMARY KEY(player_id, puzzle_id)
-        )""")
-
-        # Table for saving data about users
-        self.cur.execute(
-        """CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY,
-            name VARCHAR NOT NULL UNIQUE,
-            email VARCHAR NOT NULL UNIQUE,
-            password VARCHAR NOT NULL,
-            lichess VARCHAR UNIQUE
         )""")
 
     def insert_json(self, path, threshold):
