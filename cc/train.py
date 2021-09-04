@@ -72,6 +72,13 @@ def train(x, y, net : torch.nn.Module):
     return loss
 
 
+def load_optim(opt, net):
+    opt_map = {'Adam': torch.optim.Adam, 'SGD': torch.optim.SGD}
+    if opt == 'SGD': optim = opt_map[opt](net.parameters(), train_c['lr'], 0.9)
+    else: optim = opt_map[opt](net.parameters(), train_c['lr'])
+    return optim
+
+
 def linear_warmup(optim):
     if steps < train_c['warmup_steps']:
         for g in optim.param_groups:
@@ -79,7 +86,6 @@ def linear_warmup(optim):
 
 
 checkpoints = os.listdir(checkpoint_path)
-opt_map = {'Adam': torch.optim.Adam, 'SGD': torch.optim.SGD}
 if len(checkpoints) != 0:
     paths = [os.path.join(checkpoint_path, basename) for basename in checkpoints]
     newest_checkpoint = max(paths, key=os.path.getctime)
@@ -88,7 +94,7 @@ if len(checkpoints) != 0:
     steps = cpnt['steps']
     net = Model(*cpnt['model_args']).to('cuda:0')
     net.load_state_dict(cpnt['model_state'])
-    optim = opt_map[train_c['optim']](net.parameters(), train_c['lr'])
+    optim = load_optim(train_c['optim'], net)
     optim.load_state_dict(cpnt['optim_state'])
 
     for g in optim.param_groups:
@@ -100,7 +106,7 @@ if len(checkpoints) != 0:
 else:
     net = Model(model_c['filters'], model_c['blocks'], model_c['head'], model_c['head_v2']).to('cuda:0')
     net.reset_parameters()
-    optim = opt_map[train_c['optim']](net.parameters(), train_c['lr'])
+    optim = load_optim(train_c['optim'], net)
     used = []
     steps = 0
 
@@ -128,7 +134,6 @@ for file in files:
         for x, y in loader:
             linear_warmup(optim)
             train_loss += train(x, y, net)
-            # norm = torch.nn.utils.clip_grad_norm_(net.parameters(), 4.0)
             norm = torch.nn.utils.clip_grad_norm_(net.parameters(), train_c['grad_norm'])
             optim.step()
             steps += 1
