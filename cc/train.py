@@ -129,6 +129,7 @@ for file in files:
                 writer.add_scalar("Loss/test", test_loss, steps)
                 writer.add_scalar("Gradient norm/norm", norm, steps)
                 writer.add_scalar("Loss/train", train_loss/test_every, steps)
+                writer.add_scalar("Learning rate/lr", optim.param_groups[0]['lr'], steps)
                 writer.flush()
                 train_loss = 0
     checkpoint.save(
