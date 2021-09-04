@@ -26,6 +26,7 @@ data_c = config['data']
 train_c = config['train']
 model_c = config['model']
 if 'head_v2' not in model_c: model_c['head_v2'] = False
+if 'warmup_steps' not in train_c: train_c['warmup_steps'] = 0
 
 run_number = args.run
 data_base = os.path.abspath(data_c['db_dir'])
@@ -46,6 +47,7 @@ for p in [checkpoint_path, log_path]:
 
 loss_func = torch.nn.MSELoss()
 writer = SummaryWriter(log_path, purge_step=1728110)
+
 
 def test(test_loader : DataLoader, net : torch.nn.Module):
     net.eval()
@@ -68,6 +70,12 @@ def train(x, y, net : torch.nn.Module):
     loss = loss_func(preds, y)
     loss.backward()
     return loss
+
+
+def linear_warmup(optim):
+    if steps < train_c['warmup_steps']:
+        for g in optim.param_groups:
+            g['lr'] = (1+steps)/train_c['warmup_steps'] * train_c['lr']
 
 
 checkpoints = os.listdir(checkpoint_path)
@@ -118,6 +126,7 @@ for file in files:
             break
         loader = DataLoader(train_dataset, train_c['bs'], True, pin_memory=True, drop_last=True, num_workers=train_c['num_workers'])
         for x, y in loader:
+            linear_warmup(optim)
             train_loss += train(x, y, net)
             # norm = torch.nn.utils.clip_grad_norm_(net.parameters(), 4.0)
             norm = torch.nn.utils.clip_grad_norm_(net.parameters(), train_c['grad_norm'])

@@ -15,6 +15,7 @@ train:
     test_every: 500
     num_workers: 3
     optim: Adam # {SGD | Adam}
+    warmup_steps: 1000
 
 model:
     filters: 32
