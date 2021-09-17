@@ -8,6 +8,7 @@ import torch.optim
 import torch.utils.data
 import torch.nn.utils
 import torch.nn
+import torch.linalg
 
 import os
 import argparse
@@ -144,6 +145,11 @@ for file in files:
                 writer.add_scalar("Gradient norm/norm", norm, steps)
                 writer.add_scalar("Loss/train", train_loss/test_every, steps)
                 writer.add_scalar("Learning rate/lr", optim.param_groups[0]['lr'], steps)
+                for name, param in net.named_parameters():
+                    if param.requires_grad:
+                        writer.add_scalar(f"Weight norm/{name}", torch.linalg.norm(param), steps)
+                flat_param = torch.nn.utils.parameters_to_vector(net.parameters())
+                writer.add_scalar("Weight norm/reg term", flat_param.dot(flat_param), steps)
                 writer.flush()
                 train_loss = 0
     checkpoint.save(

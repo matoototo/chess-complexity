@@ -113,3 +113,35 @@ run23 ~ run20
 trying mg optim
 mg 64x6x128
 3e-4, 3e-5 at 1763258, 3e-6 at 2608584
+
+run24 ~ run23
+larger network
+mg 162x12x128
+3e-4
+
+run31
+SGD with momentum
+SGD 64x6x256 v2
+0.2
+
+run32 ~ run31
+head v1
+0.2, 0.02 @ 1115852, 0.002 @ 2611416
+
+run33 ~ run31
+4096 BS
+0.2, 0.02 @ 1301159, 0.002 @ 1779863
+
+run34 ~ run33
+1e-4 lambda (L2)
+0.2
+
+run35 ~ run34
+0.4 starting LR
+0.4
+
+run36 ~ run35
+logging weight norms
+
+run37 ~ run36
+1e-5 lambda (L2)
