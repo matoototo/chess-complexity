@@ -104,12 +104,14 @@ if len(checkpoints) != 0:
     used = cpnt['used_files']
     if empty_used: used = []
     files = list(filter(lambda x : x not in used, files))
+    first_from_cpnt = True
 else:
     net = Model(model_c['filters'], model_c['blocks'], model_c['head'], model_c['head_v2']).to('cuda:0')
     net.reset_parameters()
     optim = load_optim(train_c['optim'], net)
     used = []
     steps = 0
+    first_from_cpnt = False
 
 test_dataset = PositionDataset(test_dataset_file)
 test_dataset.parse_data(train_c['test_size'])
@@ -143,7 +145,9 @@ for file in files:
                 print(steps, ':', test_loss)
                 writer.add_scalar("Loss/test", test_loss, steps)
                 writer.add_scalar("Gradient norm/norm", norm, steps)
-                writer.add_scalar("Loss/train", train_loss/test_every, steps)
+                train_scalar = train_loss/(steps-cpnt['steps'] if first_from_cpnt else test_every)
+                if (first_from_cpnt): first_from_cpnt = False
+                writer.add_scalar("Loss/train", train_scalar, steps)
                 writer.add_scalar("Learning rate/lr", optim.param_groups[0]['lr'], steps)
                 for name, param in net.named_parameters():
                     if param.requires_grad:
