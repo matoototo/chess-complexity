@@ -1,4 +1,4 @@
-filter -> parser -> data -> (imported by) train
+filter -> parser -> shuffler -> data -> (imported by) train
 
 filter.cpp
     - filter games that do not have computer evaluations
@@ -6,6 +6,11 @@ filter.cpp
 
 parser.py
     - convert each position to FEN, extract evaluations and header values
+
+shuffler.cpp
+    - shuffle positions in-file
+    - shuffle positions across files
+    - precalculate deltas
 
 data.py
     - converts output from parser.py into a PyTorch dataset
