@@ -28,12 +28,12 @@ struct Game {
 
 struct Position {
     std::string fen;
-    float eval, eval_next;
+    float eval, eval_next, time_used;
     Game game;
-    Position(const std::string& s, const float& ev, const Game& g): fen(s), eval(ev), eval_next(ev), game(g) {}
+    Position(const std::string& s, const float& ev, const Game& g, const float& tu): fen(s), eval(ev), eval_next(ev), game(g), time_used(tu) {}
     std::string to_string() {
         std::stringstream ss;
-        ss << fen << ", " << eval << ", " << eval_next << ", " << game.winner << ", " << game.welo << ", " << game.belo << ", " << game.tc << '\n';
+        ss << fen << ", " << eval << ", " << eval_next << ", " << game.winner << ", " << game.welo << ", " << game.belo << ", " << game.tc << ", " << time_used << '\n';
         return ss.str();
     }
 };
@@ -46,7 +46,7 @@ struct Data {
     unsigned long long i;
     std::vector<Position> positions;
     bool last = false;
-    Data(const fs::path& f): file(f), current_game(next_game()), current_pos(STARTPOS, 0, current_game), i(0), positions(populate_positions()) {}
+    Data(const fs::path& f): file(f), current_game(next_game()), current_pos(STARTPOS, 0, current_game, 0.0f), i(0), positions(populate_positions()) {}
 
     Game next_game() {
         std::string line;
@@ -77,7 +77,9 @@ struct Data {
         std::string line;
         getline(file, line);
         float eval = std::stof(line);
-        current_pos = Position(fen, eval, current_game);
+        getline(file, line);
+        float time_used = std::stoi(line);
+        current_pos = Position(fen, eval, current_game, time_used);
     }
 
     std::vector<Position> populate_positions() {

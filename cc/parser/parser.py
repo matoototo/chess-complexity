@@ -28,10 +28,20 @@ def parse_game(game : chess.pgn.Game, out : TextIOWrapper):
         out.write(game.headers["BlackElo"] + '\n')
         out.write(tc)
 
+    last_w = int(game.headers["TimeControl"].split("+")[0])
+    last_b = int(game.headers["TimeControl"].split("+")[0])
+    increment = int(game.headers["TimeControl"].split("+")[1])
     while (game != None):
         out.write(game.board().fen() + '\n')
         if game.eval():
             out.write(str((2*game.eval().wdl(model="lichess").white().expectation())-1.0))
+        else:
+            out.write("0")
+        out.write('\n')
+        if game.clock():
+            out.write(str((last_w if game.turn() else last_b) + increment-game.clock()))
+            if game.turn(): last_w = game.clock()
+            else: last_b = game.clock()
         else:
             out.write("0")
         out.write('\n')

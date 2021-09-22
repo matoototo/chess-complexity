@@ -44,7 +44,7 @@ class PositionDataset(torch.utils.data.Dataset):
         self.labels = []
         while True:
             line = self.file.readline().split(',')
-            if (len(line) < 7): break
+            if (len(line) < 8): break
             fen = line[0]
             eval = float(line[1])
             eval_next = float(line[2])
@@ -52,9 +52,10 @@ class PositionDataset(torch.utils.data.Dataset):
             welo = int(line[4])
             belo = int(line[5])
             tc = int(line[6])
+            time_used = float(line[7])
             if (limit and len(self.positions) >= limit): break
             game = Game(winner, welo, belo, tc)
-            self.positions.append(Board(game, fen, eval))
+            self.positions.append(Board(game, fen, eval, time_used))
             self.labels.append(eval_delta(eval, eval_next, self.positions[-1].side_to_move()))
         self.positions = np.array(self.positions)
         self.labels = np.array(self.labels).reshape(len(self.labels), 1)
@@ -72,11 +73,12 @@ class Game:
 
 
 class Board:
-    __slots__ = ['game', 'eval', 'fen']
-    def __init__(self, game, fen, eval):
+    __slots__ = ['game', 'eval', 'fen', 'time_used']
+    def __init__(self, game, fen, eval, time_used = 0.0):
         self.game = game
         self.eval = eval
         self.fen = fen
+        self.time_used = time_used
 
     def __repr__(self):
         return self.fen
@@ -102,6 +104,7 @@ class Board:
         planes = torch.cat((planes, elo_to_plane(self.game.welo if to_move == 1.0 else self.game.belo)))
         planes = torch.cat((planes, tc_to_plane(self.game.tc)))
         planes = torch.cat((planes, eval_to_plane(self.eval)))
+        planes = torch.cat((planes, used_to_plane(self.time_used)))
         return planes
 
     def fen_to_planes(self):
@@ -130,6 +133,11 @@ def tc_to_plane(tc):
 
 def eval_to_plane(eval):
     return torch.full((1, 8, 8), eval) # check if passing next instead of current...
+
+def used_to_plane(used):
+    AVG = 5 # Guessed...
+    STDDEV = 5 # Same...
+    return torch.full((1, 8, 8), (used-AVG)/STDDEV)
 
 def eval_delta(eval, next_eval, next_to_move):
     return torch.tensor([(eval-next_eval)*next_to_move])
