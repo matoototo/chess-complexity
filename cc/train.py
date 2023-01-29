@@ -47,7 +47,7 @@ for p in [checkpoint_path, log_path]:
 
 
 loss_func = torch.nn.MSELoss()
-writer = SummaryWriter(log_path, purge_step=1728110)
+writer = SummaryWriter(log_path, purge_step=1e9)
 
 
 def test(test_loader : DataLoader, net : torch.nn.Module):
@@ -58,8 +58,8 @@ def test(test_loader : DataLoader, net : torch.nn.Module):
         y = y.to('cuda:0')
         preds = net(x)
         with torch.no_grad():
-            test_loss += loss_func(preds, y)
-    return test_loss/len(test_loader)
+            test_loss += len(x) * loss_func(preds, y)
+    return test_loss / len(test_loader.dataset)
 
 
 def train(x, y, net : torch.nn.Module):
@@ -85,6 +85,11 @@ def linear_warmup(optim):
         for g in optim.param_groups:
             g['lr'] = (1+steps)/train_c['warmup_steps'] * train_c['lr']
 
+def mask_to_list(mask, files):
+    return [f for f, m in zip(files, mask) if m]
+
+def list_to_mask(files, used):
+    return [f in used for f in files]
 
 checkpoints = os.listdir(checkpoint_path)
 if len(checkpoints) != 0:
@@ -113,54 +118,51 @@ else:
     steps = 0
     first_from_cpnt = False
 
-test_dataset = PositionDataset(test_dataset_file)
-test_dataset.parse_data(train_c['test_size'])
+test_dataset = PositionDataset([test_dataset_file], train_c["test_size"])
 test_loader = DataLoader(test_dataset, train_c['bs'], False, pin_memory=True, num_workers=train_c['num_workers'])
 
 test_every = train_c['test_every']
 train_loss = 0
-for file in files:
-    if file.split('.')[-1] != 'data': continue
-    print(file)
-    used.append(file)
-    train_dataset = PositionDataset(os.path.join(data_base, file))
-    if file == test_dataset_file.split('/')[-1]:
-        print("skipping")
-        train_dataset.file.seek(test_dataset.file.tell())
-    while True:
-        train_dataset.parse_data()
-        if (len(train_dataset) == 0): break
-        if (len(train_dataset) < 100000):
-            print("throwing!", len(train_dataset))
-            break
-        loader = DataLoader(train_dataset, train_c['bs'], True, pin_memory=True, drop_last=True, num_workers=train_c['num_workers'])
-        for x, y in loader:
-            linear_warmup(optim)
-            train_loss += train(x, y, net)
-            norm = torch.nn.utils.clip_grad_norm_(net.parameters(), train_c['grad_norm'])
-            optim.step()
-            steps += 1
-            if (steps%test_every == 0):
-                test_loss = test(test_loader, net)
-                print(steps, ':', test_loss)
-                writer.add_scalar("Loss/test", test_loss, steps)
-                writer.add_scalar("Gradient norm/norm", norm, steps)
-                train_scalar = train_loss/(steps-cpnt['steps'] if first_from_cpnt else test_every)
-                if (first_from_cpnt): first_from_cpnt = False
-                writer.add_scalar("Loss/train", train_scalar, steps)
-                writer.add_scalar("Learning rate/lr", optim.param_groups[0]['lr'], steps)
-                for name, param in net.named_parameters():
-                    if param.requires_grad:
-                        writer.add_scalar(f"Weight norm/{name}", torch.linalg.norm(param), steps)
-                flat_param = torch.nn.utils.parameters_to_vector(net.parameters())
-                writer.add_scalar("Weight norm/reg term", flat_param.dot(flat_param), steps)
-                writer.flush()
-                train_loss = 0
-    checkpoint.save(
-      steps,
-      net.state_dict(),
-      optim.state_dict(),
-      used, net.args,
-      os.path.join(checkpoint_path, f"{steps}.pt")
-    )
+files = [os.path.join(data_base, f) for f in files if f.split('.')[-1] == 'data' and f.split('/')[-1] != test_dataset_file.split('/')[-1]]
+
+from multiprocessing.managers import SharedMemoryManager
+
+smm = SharedMemoryManager()
+smm.start()
+
+used_mask = smm.ShareableList(list_to_mask(files, used))
+
+train_dataset = PositionDataset(files, used = used_mask)
+loader = DataLoader(train_dataset, train_c['bs'], pin_memory=True, drop_last=True, num_workers=train_c['num_workers'])
+for x, y in loader:
+    linear_warmup(optim)
+    train_loss += train(x, y, net)
+    norm = torch.nn.utils.clip_grad_norm_(net.parameters(), train_c['grad_norm'])
+    optim.step()
+    steps += 1
+    if (steps%test_every == 0):
+        print(f"Files used so far: {sum(used_mask)}")
+        test_loss = test(test_loader, net)
+        print(steps, ':', test_loss)
+        writer.add_scalar("Loss/test", test_loss, steps)
+        writer.add_scalar("Gradient norm/norm", norm, steps)
+        train_scalar = train_loss/(steps-cpnt['steps'] if first_from_cpnt else test_every)
+        if (first_from_cpnt): first_from_cpnt = False
+        writer.add_scalar("Loss/train", train_scalar, steps)
+        writer.add_scalar("Learning rate/lr", optim.param_groups[0]['lr'], steps)
+        for name, param in net.named_parameters():
+            if param.requires_grad:
+                writer.add_scalar(f"Weight norm/{name}", torch.linalg.norm(param), steps)
+        flat_param = torch.nn.utils.parameters_to_vector(net.parameters())
+        writer.add_scalar("Weight norm/reg term", flat_param.dot(flat_param), steps)
+        writer.flush()
+        train_loss = 0
+        checkpoint.save(
+            steps,
+            net.state_dict(),
+            optim.state_dict(),
+            mask_to_list(used_mask, files), net.args,
+            os.path.join(checkpoint_path, f"{steps}.pt")
+        )
+
 writer.close()

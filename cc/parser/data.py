@@ -3,6 +3,7 @@ import torch.utils.data
 import numpy as np
 from collections import defaultdict
 from torch.utils.data.dataloader import DataLoader
+import itertools
 
 
 def create_offsets():
@@ -24,45 +25,74 @@ class InferDataset(torch.utils.data.Dataset):
 
     def __len__(self):
         return len(self.positions)
-
-
-class PositionDataset(torch.utils.data.Dataset):
-    def __init__(self, filename):
-        self.filename = filename
-        self.file = open(self.filename)
-        self.positions = []
-        self.labels = []
-
-    def __getitem__(self, i):
-        return (self.positions[i].to_planes(), self.labels[i])
+class PositionDataset(torch.utils.data.IterableDataset):
+    def __init__(self, filenames, limit = None, used = []):
+        self.filenames = filenames
+        self.limit = limit
+        self.used = used
 
     def __len__(self):
-        return len(self.positions)
+        return self.limit
 
-    def parse_data(self, limit = None):
-        self.positions = []
-        self.labels = []
-        while True:
-            line = self.file.readline().split(',')
-            if (len(line) < 7): break
-            fen = line[0]
-            eval = float(line[1])
-            eval_next = float(line[2])
-            winner = int(line[3])
-            welo = int(line[4])
-            belo = int(line[5])
-            tc = int(line[6])
-            if (limit and len(self.positions) >= limit): break
-            game = Game(winner, welo, belo, tc)
-            self.positions.append(Board(game, fen, eval))
-            self.labels.append(eval_delta(eval, eval_next, self.positions[-1].side_to_move()))
-        self.positions = np.array(self.positions)
+    def __iter__(self):
+        num_workers = torch.utils.data.get_worker_info().num_workers
+        worker_id = torch.utils.data.get_worker_info().id
+        for i in range(worker_id, len(self.filenames), num_workers):
+            file = open(self.filenames[i], 'r')
+            if len(self.used):
+                if self.used[i]: continue
+                self.used[i] = True
+            mapped_iterator = map(self.parse_line, file)
+            if self.limit is not None:
+                mapped_iterator = itertools.islice(mapped_iterator, self.limit)
+            for planes, label in mapped_iterator:
+                yield planes, label
 
-        labels_array = np.empty(len(self.labels), dtype=object)
-        for i, label in enumerate(self.labels):
-            labels_array[i] = label
-        self.labels = labels_array
+    def parse_line(self, line):
+        line = line.split(',')
+        fen = line[0]
+        eval = float(line[1])
+        eval_next = float(line[2])
+        winner = int(line[3])
+        welo = int(line[4])
+        belo = int(line[5])
+        tc = int(line[6])
+        to_move = 1.0 if fen.split(' ')[1] == 'w' else -1.0
+        labels = eval_delta(eval, eval_next, to_move)
+        planes = self.to_planes(to_move, fen, welo, belo, tc, eval)
+        return planes, torch.tensor([labels])
 
+    def piece_indices(self, fen):
+        index = 0
+        indices = []
+        for char in fen.split(' ')[0]:
+            if (char == '/'): continue
+            if (char.isnumeric()): index += int(char)
+            elif (char in ['r', 'n', 'b', 'q', 'k', 'p', 'R', 'N', 'B', 'Q', 'K', 'P']):
+                indices.append(index + offsets[char])
+                index += 1
+            else: index += 1
+        return indices
+
+    def to_planes(self, to_move, fen, welo, belo, tc, eval):
+        planes = self.fen_to_planes(to_move, fen)
+        planes = torch.cat((planes, elo_to_plane(welo if to_move == 1.0 else belo)))
+        planes = torch.cat((planes, tc_to_plane(tc)))
+        planes = torch.cat((planes, eval_to_plane(eval)))
+        return planes
+
+    def fen_to_planes(self, to_move, fen):
+        planes = self.populate_piece_planes(fen)
+        to_move = torch.full((1, 8, 8), to_move)
+        planes = torch.cat((planes, to_move))
+        return planes
+
+    def populate_piece_planes(self, fen) -> torch.Tensor:
+        planes = torch.zeros(12*64)
+        new_indices = self.piece_indices(fen)
+        planes[new_indices] = 1.0
+        planes = planes.reshape(12, 8, 8)
+        return planes
 
 class Game:
     __slots__ = ['winner', 'welo', 'belo', 'tc', 'white', 'black', 'id']
@@ -74,7 +104,6 @@ class Game:
         self.white = white
         self.black = black
         self.id = id
-
 
 class Board:
     __slots__ = ['game', 'eval', 'fen']
@@ -122,7 +151,6 @@ class Board:
         planes = planes.reshape(12, 8, 8)
         return planes
 
-
 def elo_to_plane(elo):
     AVG = 1500 # Approximate values, worth taking another
     STDDEV = 350 # look at once a baseline is established
@@ -137,4 +165,4 @@ def eval_to_plane(eval):
     return torch.full((1, 8, 8), eval) # check if passing next instead of current...
 
 def eval_delta(eval, next_eval, next_to_move):
-    return torch.tensor([(eval-next_eval)*next_to_move])
+    return (eval-next_eval)*next_to_move
