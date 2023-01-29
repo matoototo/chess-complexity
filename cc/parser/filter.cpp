@@ -55,6 +55,10 @@ int main(int argc, char* argv[]) {
     long long lines = 0;
     while (f) {
         std::getline(f, s);
+        if (s.substr(0, 3) == "1-0" || s.substr(0, 3) == "0-1" || s.substr(0, 1) == "*") {
+        	current = Game();
+        	continue;
+        }
         if (s[0] != '[' && !std::isspace(s[0]) && s[0] != '\0' && s[0] != '1') {
             std::cerr << "line must start with [, \\0 or 1 \nerror in line " << lines << " with content:\n" << s << '\n';
             exit(1);

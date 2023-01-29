@@ -57,7 +57,12 @@ class PositionDataset(torch.utils.data.Dataset):
             self.positions.append(Board(game, fen, eval))
             self.labels.append(eval_delta(eval, eval_next, self.positions[-1].side_to_move()))
         self.positions = np.array(self.positions)
-        self.labels = np.array(self.labels).reshape(len(self.labels), 1)
+
+        labels_array = np.empty(len(self.labels), dtype=object)
+        for i, label in enumerate(self.labels):
+            labels_array[i] = label
+        self.labels = labels_array
+
 
 class Game:
     __slots__ = ['winner', 'welo', 'belo', 'tc', 'white', 'black', 'id']
