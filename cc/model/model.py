@@ -4,14 +4,14 @@ from collections import OrderedDict
 import torch.nn.init as init
 
 class Model(nn.Module):
-    def __init__(self, filters, blocks, head_neurons, head_v2 = False, use_se = False, se_ratio = 8):
+    def __init__(self, filters, blocks, head_neurons, head_v2 = False, use_se = False, se_ratio = 8, head_filters = 1):
         super().__init__()
         self.args = (filters, blocks, head_neurons, head_v2, use_se, se_ratio)
         self.input = InputBlock(16, filters)
         self.blocks = nn.Sequential(
             OrderedDict([(f"block{i}", Block(filters, use_se, se_ratio)) for i in range(blocks)])
         )
-        if head_v2: self.output = ComplexityHeadV2(filters, head_neurons)
+        if head_v2: self.output = ComplexityHeadV2(filters, head_neurons, head_filters)
         else: self.output = ComplexityHead(filters, head_neurons)
         self.reset_parameters()
 
@@ -93,13 +93,13 @@ class ComplexityHead(nn.Sequential):
         ]))
 
 class ComplexityHeadV2(nn.Sequential):
-    def __init__(self, filters, neurons):
+    def __init__(self, filters, neurons, head_filters):
         super().__init__(OrderedDict([
-            ("conv1", nn.Conv2d(filters, 1, 1, bias=False)),
-            ("bn1", nn.BatchNorm2d(1, affine=True)),
             ("relu1", nn.ReLU(inplace=True)),
+            ("conv1", nn.Conv2d(filters, head_filters, 1, bias=False)),
+            ("bn1", nn.BatchNorm2d(head_filters, affine=True)),
             ('flatten', nn.Flatten()),
-            ('lin1', nn.Linear(64, neurons)),
             ('relu1', nn.ReLU(inplace=True)),
+            ('lin1', nn.Linear(head_filters * 64, neurons)),
             ('lin2', nn.Linear(neurons, 1))
         ]))

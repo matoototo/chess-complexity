@@ -30,6 +30,7 @@ data_c = config['data']
 train_c = config['train']
 model_c = config['model']
 if 'head_v2' not in model_c: model_c['head_v2'] = False
+if 'head_filters' not in model_c: model_c['head_filters'] = 1
 if 'use_se' not in model_c: model_c['use_se'] = False
 if 'se_ratio' not in model_c: model_c['se_ratio'] = 8
 if 'warmup_steps' not in train_c: train_c['warmup_steps'] = 0
@@ -115,7 +116,8 @@ if len(checkpoints) != 0:
     if empty_used: used = []
     files = list(filter(lambda x : x not in used, files))
 else:
-    net = Model(model_c['filters'], model_c['blocks'], model_c['head'], model_c['head_v2'], use_se=model_c['use_se'], se_ratio=model_c['se_ratio']).to('cuda:0')
+    net = Model(model_c['filters'], model_c['blocks'], model_c['head'], model_c['head_v2'],
+                model_c['use_se'], model_c['se_ratio'], model_c['head_filters']).to('cuda:0')
     net.reset_parameters()
     optim = load_optim(train_c['optim'], net)
     used = []
