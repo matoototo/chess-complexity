@@ -8,3 +8,4 @@ backup
 API_TOKEN.py
 *.db
 cc.egg-info
+build

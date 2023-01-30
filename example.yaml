@@ -22,4 +22,6 @@ model:
     blocks: 4
     head: 32
     head_v2: true # {true | false}, if missing assumes 'false'
+    use_se: true # {true | false}, if missing assumes 'false'
+    se_ratio: 8
 ...
