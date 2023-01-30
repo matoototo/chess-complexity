@@ -34,6 +34,7 @@ if 'head_filters' not in model_c: model_c['head_filters'] = 1
 if 'use_se' not in model_c: model_c['use_se'] = False
 if 'se_ratio' not in model_c: model_c['se_ratio'] = 8
 if 'warmup_steps' not in train_c: train_c['warmup_steps'] = 0
+if 'block_activation' not in model_c: model_c['block_activation'] = 'ReLU'
 
 run_number = args.run
 data_base = os.path.abspath(data_c['db_dir'])
@@ -97,6 +98,9 @@ def mask_to_list(mask, files):
 def list_to_mask(files, used):
     return [f in used for f in files]
 
+activation_map = {'ReLU': torch.nn.ReLU, 'Mish': torch.nn.Mish}
+block_activation = activation_map[model_c['block_activation']]
+
 checkpoints = os.listdir(checkpoint_path)
 if len(checkpoints) != 0:
     paths = [os.path.join(checkpoint_path, basename) for basename in checkpoints]
@@ -117,7 +121,7 @@ if len(checkpoints) != 0:
     files = list(filter(lambda x : x not in used, files))
 else:
     net = Model(model_c['filters'], model_c['blocks'], model_c['head'], model_c['head_v2'],
-                model_c['use_se'], model_c['se_ratio'], model_c['head_filters']).to('cuda:0')
+                model_c['use_se'], model_c['se_ratio'], model_c['head_filters'], block_activation).to('cuda:0')
     net.reset_parameters()
     optim = load_optim(train_c['optim'], net)
     used = []

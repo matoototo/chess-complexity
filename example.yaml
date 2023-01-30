@@ -25,4 +25,5 @@ model:
     head_filters: 1
     use_se: true # {true | false}, if missing assumes 'false'
     se_ratio: 8
+    block_activation: Mish # {ReLU | Mish}
 ...
