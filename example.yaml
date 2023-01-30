@@ -14,7 +14,7 @@ train:
     bs: 1024
     test_every: 500
     num_workers: 3
-    optim: Adam # {SGD | Adam}
+    optim: Adam # {SGD | Adam | RAdam}
     warmup_steps: 1000
 
 model:
