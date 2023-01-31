@@ -101,5 +101,7 @@ class ComplexityHeadV2(nn.Sequential):
             ('flatten', nn.Flatten()),
             ('lin1', nn.Linear(head_filters * 64, neurons)),
             ('act2', activation(inplace=True)),
-            ('lin2', nn.Linear(neurons, 1))
+            ('lin2', nn.Linear(neurons, 1)),
+            ("tanh", nn.Tanh()),
+            ("lin3", nn.Linear(1, 1))
         ]))

@@ -13,6 +13,7 @@ import torch.linalg
 import os
 import argparse
 import pathlib
+import random
 
 import yaml
 
@@ -45,6 +46,9 @@ empty_used = args.empty_used
 
 files = os.listdir(data_base)
 
+random.seed(run_number)
+random.shuffle(files)
+
 run_dir = f"run{int(run_number):2d}"
 checkpoint_path = os.path.join(checkpoint_base, run_dir)
 log_path = os.path.join(log_base, run_dir)
@@ -61,10 +65,10 @@ def test(test_loader : DataLoader, net : torch.nn.Module):
     net.eval()
     test_loss = 0
     for x, y in test_loader:
-        x = x.to('cuda:0')
-        y = y.to('cuda:0')
-        preds = net(x)
         with torch.no_grad():
+            x = x.to('cuda:0')
+            y = y.to('cuda:0')
+            preds = net(x)
             test_loss += len(x) * loss_func(preds, y)
     return test_loss / len(test_loader.dataset)
 
