@@ -1,4 +1,5 @@
 from io import TextIOWrapper
+import multiprocessing as mp
 import chess.pgn
 import sys
 import os
@@ -31,22 +32,18 @@ def parse_game(game : chess.pgn.Game, out : TextIOWrapper):
     while (game != None):
         out.write(game.board().fen() + '\n')
         if game.eval():
-            out.write(str((2*game.eval().wdl(model="lichess").white().expectation())-1.0))
+            out.write(str((2*game.eval().wdl(model="sf15.1").white().expectation())-1.0))
         else:
             out.write("0")
         out.write('\n')
         game = game.next()
     out.write('\n')
 
-if (len(sys.argv) != 3):
-    print("Wrong arguments!\nargs: path-to-input-pgn, path-to-output\n")
-    exit(1)
-
-for pgn_file in os.listdir(sys.argv[1]):
-    print(pgn_file)
+def worker(pgn_file):
+    print(pgn_file, flush=True)
     split = pgn_file.split(".")[0].split("_")
     filename = sys.argv[2] + split[-3] + "_processed_" + split[-1] + ".data"
-    if filename.split('/')[-1] in os.listdir(sys.argv[2]): continue
+    if filename.split('/')[-1] in os.listdir(sys.argv[2]): return
     pgn = open(sys.argv[1] + pgn_file)
     output = open(filename, 'a+')
     i = 0
@@ -55,4 +52,12 @@ for pgn_file in os.listdir(sys.argv[1]):
         parse_game(game, output)
         game = chess.pgn.read_game(pgn)
         i += 1
-    print(i)
+    print(i, flush=True)
+
+if __name__ == '__main__':
+    if (len(sys.argv) != 3):
+        print("Wrong arguments!\nargs: path-to-input-pgn, path-to-output\n")
+        exit(1)
+    pool = mp.Pool(mp.cpu_count())
+    pgn_files = os.listdir(sys.argv[1])
+    pool.map(worker, pgn_files)
