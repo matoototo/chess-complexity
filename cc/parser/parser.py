@@ -1,8 +1,11 @@
+import os
+import time
+import argparse
+import chess.pgn
+import functools
+from pathlib import Path
 from io import TextIOWrapper
 import multiprocessing as mp
-import chess.pgn
-import sys
-import os
 
 
 def parse_tc(tc_string):
@@ -39,25 +42,33 @@ def parse_game(game : chess.pgn.Game, out : TextIOWrapper):
         game = game.next()
     out.write('\n')
 
-def worker(pgn_file):
+def parse(pgn_file, input_dir, output_dir):
     print(pgn_file, flush=True)
     split = pgn_file.split(".")[0].split("_")
-    filename = sys.argv[2] + split[-3] + "_processed_" + split[-1] + ".data"
-    if filename.split('/')[-1] in os.listdir(sys.argv[2]): return
-    pgn = open(sys.argv[1] + pgn_file)
-    output = open(filename, 'a+')
+    filename = f"{split[-3]}_processed_{split[-1]}.data"
+    if filename in os.listdir(output_dir): return
+
     i = 0
-    game = chess.pgn.read_game(pgn)
-    while game != None:
-        parse_game(game, output)
+    filepath = output_dir / filename
+    with open(input_dir / pgn_file) as pgn, open(filepath, 'a+') as output:
         game = chess.pgn.read_game(pgn)
-        i += 1
+        while game != None:
+            parse_game(game, output)
+            game = chess.pgn.read_game(pgn)
+            i += 1
     print(i, flush=True)
 
 if __name__ == '__main__':
-    if (len(sys.argv) != 3):
-        print("Wrong arguments!\nargs: path-to-input-pgn, path-to-output\n")
-        exit(1)
-    pool = mp.Pool(mp.cpu_count())
-    pgn_files = os.listdir(sys.argv[1])
-    pool.map(worker, pgn_files)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input", required=True, help="path to input pgn", type=Path)
+    parser.add_argument("--output", required=True, help="path to output", type=Path)
+    parser.add_argument("--threads", required=False, help="number of threads to spawn (default = core count)", type=int, default=mp.cpu_count())
+    args = parser.parse_args()
+
+    start = time.time()
+    pool = mp.Pool(args.threads)
+    pgn_files = [f for f in os.listdir(args.input) if f.endswith(".pgn")]
+
+    job = functools.partial(parse, input_dir=args.input, output_dir=args.output)
+    pool.map(job, pgn_files)
+    print("Time: ", time.time() - start)
