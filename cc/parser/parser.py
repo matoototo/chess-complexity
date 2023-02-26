@@ -45,7 +45,9 @@ def parse_game(game : chess.pgn.Game, out : TextIOWrapper):
 def parse(pgn_file, input_dir, output_dir):
     print(pgn_file, flush=True)
     split = pgn_file.split(".")[0].split("_")
-    filename = f"{split[-3]}_processed_{split[-1]}.data"
+
+    prefix = "" if len(split) == 2 else split[-3]
+    filename = f"{prefix}_processed_{split[-1]}.data"
     if filename in os.listdir(output_dir): return
 
     i = 0
