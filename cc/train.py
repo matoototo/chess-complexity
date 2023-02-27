@@ -19,6 +19,14 @@ import yaml
 
 from torchinfo import summary
 
+def dir_to_data(dir):
+    files = []
+    for root, _, filenames in os.walk(dir):
+        for filename in filenames:
+            if filename.endswith('.data'):
+                files.append(os.path.join(root, filename))
+    return files
+
 parser = argparse.ArgumentParser(description='Train a network for complexity prediction')
 parser.add_argument('--run', metavar='run number', type=int, help='the number of the training run, ex. 12', required=True)
 parser.add_argument('--yaml', metavar='path', type=pathlib.Path, help='the path to the yaml file', required=True)
@@ -37,17 +45,21 @@ if 'se_ratio' not in model_c: model_c['se_ratio'] = 8
 if 'warmup_steps' not in train_c: train_c['warmup_steps'] = 0
 if 'block_activation' not in model_c: model_c['block_activation'] = 'ReLU'
 
+train_c["val_size"] //= train_c["num_workers"]
+
 run_number = args.run
 data_base = os.path.abspath(data_c['db_dir'])
 checkpoint_base = os.path.abspath(data_c['cp_dir'])
 log_base = os.path.abspath(data_c['log_dir'])
-val_dataset_file = os.path.abspath(data_c['val_file'])
+val_base = os.path.abspath(data_c['val_dir'])
 empty_used = args.empty_used
 
-files = os.listdir(data_base)
+files = dir_to_data(data_base)
+val_files = dir_to_data(val_base)
 
 random.seed(run_number)
 random.shuffle(files)
+random.shuffle(val_files)
 
 run_dir = f"run{int(run_number):2d}"
 checkpoint_path = os.path.join(checkpoint_base, run_dir)
@@ -70,7 +82,7 @@ def val(val_loader : DataLoader, net : torch.nn.Module):
             y = y.to('cuda:0')
             preds = net(x)
             val_loss += len(x) * loss_func(preds, y)
-    return val_loss / len(val_loader.dataset)
+    return val_loss / (train_c["num_workers"]*len(val_loader.dataset))
 
 
 def train(x, y, net : torch.nn.Module):
@@ -133,12 +145,8 @@ else:
 
 if args.summary: summary(net, verbose=2)
 
-val_dataset = PositionDataset([val_dataset_file], train_c["val_size"], loop=True)
-val_loader = DataLoader(val_dataset, train_c['bs'], False, pin_memory=True, num_workers=train_c['num_workers'], persistent_workers=True)
-
 val_every = train_c['val_every']
 train_loss = 0
-files = [os.path.join(data_base, f) for f in files if f.split('.')[-1] == 'data' and f.split('/')[-1] != val_dataset_file.split('/')[-1]]
 
 from multiprocessing.managers import SharedMemoryManager
 
@@ -146,6 +154,9 @@ smm = SharedMemoryManager()
 smm.start()
 
 used_mask = smm.ShareableList(list_to_mask(files, used))
+
+val_dataset = PositionDataset(val_files, train_c["val_size"], loop=True)
+val_loader = DataLoader(val_dataset, train_c['bs'], False, pin_memory=True, num_workers=train_c['num_workers'], persistent_workers=True)
 
 train_dataset = PositionDataset(files, used = used_mask)
 loader = DataLoader(train_dataset, train_c['bs'], pin_memory=True, drop_last=True, num_workers=train_c['num_workers'])
@@ -158,13 +169,15 @@ for x, y in loader:
     optim.step()
     steps += 1
     if (steps%val_every == 0):
-        print(f"Files used so far: {sum(used_mask)}")
         val_loss = val(val_loader, net)
-        print(steps, ':', val_loss)
-        writer.add_scalar("Loss/val", val_loss, steps)
-        writer.add_scalar("Gradient norm/norm", norm, steps)
         train_scalar = train_loss/n_samples
         n_samples = 0
+
+        print(f"Files used so far: {sum(used_mask)}")
+        print(steps, ':', val_loss)
+
+        writer.add_scalar("Loss/val", val_loss, steps)
+        writer.add_scalar("Gradient norm/norm", norm, steps)
         writer.add_scalar("Loss/train", train_scalar, steps)
         writer.add_scalar("Learning rate/lr", optim.param_groups[0]['lr'], steps)
         for name, param in net.named_parameters():
@@ -173,6 +186,7 @@ for x, y in loader:
         flat_param = torch.nn.utils.parameters_to_vector(net.parameters())
         writer.add_scalar("Weight norm/reg term", flat_param.dot(flat_param), steps)
         writer.flush()
+
         train_loss = 0
         if (steps % (val_every * 4) == 0):
             checkpoint.save(

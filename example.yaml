@@ -5,7 +5,7 @@ data:
     db_dir: ./shuffled_fens/
     cp_dir: ./checkpoints/
     log_dir: ./logs/
-    val_file: ./shuffled_0.data
+    val_dir: ./val/
 
 train:
     lr: 0.0003
