@@ -133,7 +133,7 @@ else:
 
 if args.summary: summary(net, verbose=2)
 
-val_dataset = PositionDataset([val_dataset_file], train_c["val_size"])
+val_dataset = PositionDataset([val_dataset_file], train_c["val_size"], loop=True)
 val_loader = DataLoader(val_dataset, train_c['bs'], False, pin_memory=True, num_workers=train_c['num_workers'], persistent_workers=True)
 
 val_every = train_c['val_every']

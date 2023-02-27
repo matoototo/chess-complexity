@@ -4,6 +4,8 @@ import numpy as np
 from collections import defaultdict
 from torch.utils.data.dataloader import DataLoader
 import itertools
+import fileinput
+import torch.multiprocessing as mp
 
 
 def create_offsets():
@@ -26,10 +28,13 @@ class InferDataset(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.positions)
 class PositionDataset(torch.utils.data.IterableDataset):
-    def __init__(self, filenames, limit = None, used = []):
+    def __init__(self, filenames, limit = None, used = [], loop = False):
         self.filenames = filenames
+        self.mapped_iterators = None
+        self.mutex = mp.Lock()
         self.limit = limit
         self.used = used
+        self.loop = loop
 
     def __len__(self):
         return self.limit
@@ -37,16 +42,43 @@ class PositionDataset(torch.utils.data.IterableDataset):
     def __iter__(self):
         num_workers = torch.utils.data.get_worker_info().num_workers
         worker_id = torch.utils.data.get_worker_info().id
-        for i in range(worker_id, len(self.filenames), num_workers):
-            file = open(self.filenames[i], 'r')
-            if len(self.used):
-                if self.used[i]: continue
-                self.used[i] = True
-            mapped_iterator = map(self.parse_line, file)
-            if self.limit is not None:
-                mapped_iterator = itertools.islice(mapped_iterator, self.limit)
-            for planes, label in mapped_iterator:
+
+        self.mutex.acquire()
+        if not self.mapped_iterators: self.mapped_iterators = [None] * num_workers
+        self.mutex.release()
+
+        if self.mapped_iterators[worker_id] is None or self.loop and next(self.mapped_iterators[worker_id], None) is None:
+            f_iterator = self.create_file_iterator(num_workers, worker_id)
+            self.mapped_iterators[worker_id] = f_iterator
+
+        iterator = self.mapped_iterators[worker_id]
+        if self.limit is not None:
+            iterator = itertools.islice(self.mapped_iterators[worker_id], self.limit)
+
+        count = 0
+        for planes, label in iterator:
+            count += 1
+            yield planes, label
+
+        # if we are looping, need to yield up to limit
+        if self.loop and count < self.limit:
+            iterator = self.create_file_iterator(num_workers, worker_id)
+            self.mapped_iterators[worker_id] = iterator
+            iterator = itertools.islice(iterator, self.limit - count)
+            for planes, label in iterator:
                 yield planes, label
+
+    def create_file_iterator(self, num_workers, worker_id):
+        relevant_files = []
+        for i, file in enumerate(self.filenames):
+            if len(self.used) and self.used[i]: continue
+            if i % num_workers == worker_id: relevant_files.append(file)
+        return map(self.parse_line, fileinput.input(relevant_files, openhook=self.open_file))
+
+    def open_file(self, filename, mode = 'r'):
+        index = self.filenames.index(filename)
+        if len(self.used): self.used[index] = True
+        return open(filename, mode)
 
     def parse_line(self, line):
         line = line.split(',')
