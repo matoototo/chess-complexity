@@ -5,14 +5,14 @@ data:
     db_dir: ./shuffled_fens/
     cp_dir: ./checkpoints/
     log_dir: ./logs/
-    test_file: ./shuffled_0.data
+    val_file: ./shuffled_0.data
 
 train:
     lr: 0.0003
     grad_norm: 4.0
-    test_size: 100000
+    val_size: 100000
     bs: 1024
-    test_every: 500
+    val_every: 500
     num_workers: 3
     optim: Adam # {SGD | Adam | RAdam}
     warmup_steps: 1000

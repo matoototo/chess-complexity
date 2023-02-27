@@ -1,6 +1,6 @@
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data.dataloader import DataLoader
-from cc.model.model import Model, ComplexityHead
+from cc.model.model import Model
 from cc.parser.data import PositionDataset
 import cc.checkpoint as checkpoint
 import torch
@@ -41,7 +41,7 @@ run_number = args.run
 data_base = os.path.abspath(data_c['db_dir'])
 checkpoint_base = os.path.abspath(data_c['cp_dir'])
 log_base = os.path.abspath(data_c['log_dir'])
-test_dataset_file = os.path.abspath(data_c['test_file'])
+val_dataset_file = os.path.abspath(data_c['val_file'])
 empty_used = args.empty_used
 
 files = os.listdir(data_base)
@@ -61,16 +61,16 @@ loss_func = torch.nn.MSELoss()
 writer = SummaryWriter(log_path, purge_step=1000000)
 
 
-def test(test_loader : DataLoader, net : torch.nn.Module):
+def val(val_loader : DataLoader, net : torch.nn.Module):
     net.eval()
-    test_loss = 0
-    for x, y in test_loader:
+    val_loss = 0
+    for x, y in val_loader:
         with torch.no_grad():
             x = x.to('cuda:0')
             y = y.to('cuda:0')
             preds = net(x)
-            test_loss += len(x) * loss_func(preds, y)
-    return test_loss / len(test_loader.dataset)
+            val_loss += len(x) * loss_func(preds, y)
+    return val_loss / len(val_loader.dataset)
 
 
 def train(x, y, net : torch.nn.Module):
@@ -133,12 +133,12 @@ else:
 
 if args.summary: summary(net, verbose=2)
 
-test_dataset = PositionDataset([test_dataset_file], train_c["test_size"])
-test_loader = DataLoader(test_dataset, train_c['bs'], False, pin_memory=True, num_workers=train_c['num_workers'])
+val_dataset = PositionDataset([val_dataset_file], train_c["val_size"])
+val_loader = DataLoader(val_dataset, train_c['bs'], False, pin_memory=True, num_workers=train_c['num_workers'], persistent_workers=True)
 
-test_every = train_c['test_every']
+val_every = train_c['val_every']
 train_loss = 0
-files = [os.path.join(data_base, f) for f in files if f.split('.')[-1] == 'data' and f.split('/')[-1] != test_dataset_file.split('/')[-1]]
+files = [os.path.join(data_base, f) for f in files if f.split('.')[-1] == 'data' and f.split('/')[-1] != val_dataset_file.split('/')[-1]]
 
 from multiprocessing.managers import SharedMemoryManager
 
@@ -157,11 +157,11 @@ for x, y in loader:
     norm = torch.nn.utils.clip_grad_norm_(net.parameters(), train_c['grad_norm'])
     optim.step()
     steps += 1
-    if (steps%test_every == 0):
+    if (steps%val_every == 0):
         print(f"Files used so far: {sum(used_mask)}")
-        test_loss = test(test_loader, net)
-        print(steps, ':', test_loss)
-        writer.add_scalar("Loss/test", test_loss, steps)
+        val_loss = val(val_loader, net)
+        print(steps, ':', val_loss)
+        writer.add_scalar("Loss/val", val_loss, steps)
         writer.add_scalar("Gradient norm/norm", norm, steps)
         train_scalar = train_loss/n_samples
         n_samples = 0
@@ -174,7 +174,7 @@ for x, y in loader:
         writer.add_scalar("Weight norm/reg term", flat_param.dot(flat_param), steps)
         writer.flush()
         train_loss = 0
-        if (steps % (test_every * 4) == 0):
+        if (steps % (val_every * 4) == 0):
             checkpoint.save(
                 steps,
                 net.state_dict(),
