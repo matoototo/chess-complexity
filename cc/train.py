@@ -146,6 +146,8 @@ else:
 if args.summary: summary(net, verbose=2)
 
 val_every = train_c['val_every']
+train_every = train_c['train_every']
+checkpoint_every = train_c['checkpoint_every']
 train_loss = 0
 
 from multiprocessing.managers import SharedMemoryManager
@@ -168,18 +170,23 @@ for x, y in loader:
     norm = torch.nn.utils.clip_grad_norm_(net.parameters(), train_c['grad_norm'])
     optim.step()
     steps += 1
-    if (steps%val_every == 0):
-        val_loss = val(val_loader, net)
+
+    if (steps%train_every == 0):
+        # print(f"Files used so far: {sum(used_mask)}")
         train_scalar = train_loss/n_samples
-        n_samples = 0
-
-        print(f"Files used so far: {sum(used_mask)}")
-        print(steps, ':', val_loss)
-
-        writer.add_scalar("Loss/val", val_loss, steps)
-        writer.add_scalar("Gradient norm/norm", norm, steps)
         writer.add_scalar("Loss/train", train_scalar, steps)
         writer.add_scalar("Learning rate/lr", optim.param_groups[0]['lr'], steps)
+        writer.flush()
+        train_loss = 0
+        n_samples = 0
+
+    if (steps%val_every == 0):
+        val_loss = val(val_loader, net)
+        print(f"{steps}: {val_loss:.5f}")
+
+        writer.add_scalar("Loss/val", val_loss, steps)
+
+        writer.add_scalar("Gradient norm/norm", norm, steps)
         for name, param in net.named_parameters():
             if param.requires_grad:
                 writer.add_scalar(f"Weight norm/{name}", torch.linalg.norm(param), steps)
@@ -187,15 +194,15 @@ for x, y in loader:
         writer.add_scalar("Weight norm/reg term", flat_param.dot(flat_param), steps)
         writer.flush()
 
-        train_loss = 0
-        if (steps % (val_every * 4) == 0):
-            checkpoint.save(
-                steps,
-                net.state_dict(),
-                optim.state_dict(),
-                mask_to_list(used_mask, files), net.args,
-                os.path.join(checkpoint_path, f"{steps}.pt")
-            )
+    if (steps % checkpoint_every == 0):
+        checkpoint.save(
+            steps,
+            net.state_dict(),
+            optim.state_dict(),
+            mask_to_list(used_mask, files), net.args,
+            os.path.join(checkpoint_path, f"{steps}.pt")
+        )
+
 checkpoint.save(
     steps,
     net.state_dict(),

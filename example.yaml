@@ -13,6 +13,8 @@ train:
     val_size: 100000
     bs: 1024
     val_every: 500
+    train_every: 100
+    checkpoint_every: 500
     num_workers: 3
     optim: Adam # {SGD | Adam | RAdam}
     warmup_steps: 1000
