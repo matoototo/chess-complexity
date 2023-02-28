@@ -44,6 +44,7 @@ if 'use_se' not in model_c: model_c['use_se'] = False
 if 'se_ratio' not in model_c: model_c['se_ratio'] = 8
 if 'warmup_steps' not in train_c: train_c['warmup_steps'] = 0
 if 'block_activation' not in model_c: model_c['block_activation'] = 'ReLU'
+if 'weight_decay' not in train_c: train_c['weight_decay'] = 0
 
 train_c["val_size"] //= train_c["num_workers"]
 
@@ -98,8 +99,8 @@ def train(x, y, net : torch.nn.Module):
 
 def load_optim(opt, net):
     opt_map = {'Adam': torch.optim.Adam, 'SGD': torch.optim.SGD, 'RAdam': torch.optim.RAdam}
-    if opt == 'SGD': optim = opt_map[opt](net.parameters(), train_c['lr'], 0.9)
-    else: optim = opt_map[opt](net.parameters(), train_c['lr'])
+    if opt == 'SGD': optim = opt_map[opt](net.parameters(), train_c['lr'], 0.9, weight_decay=train_c['weight_decay'])
+    else: optim = opt_map[opt](net.parameters(), train_c['lr'], weight_decay=train_c['weight_decay'])
     return optim
 
 
@@ -157,18 +158,26 @@ smm.start()
 
 used_mask = smm.ShareableList(list_to_mask(files, used))
 
+dataset_steps = 1e6
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optim, dataset_steps, eta_min=train_c['lr'] / 10)
+
 val_dataset = PositionDataset(val_files, train_c["val_size"], loop=True)
 val_loader = DataLoader(val_dataset, train_c['bs'], False, pin_memory=True, num_workers=train_c['num_workers'], persistent_workers=True)
 
 train_dataset = PositionDataset(files, used = used_mask)
 loader = DataLoader(train_dataset, train_c['bs'], pin_memory=True, drop_last=True, num_workers=train_c['num_workers'])
 n_samples = 0
+for step in range(steps):
+    linear_warmup(optim)
+    scheduler.step()
+
 for x, y in loader:
     n_samples += len(x)
     linear_warmup(optim)
     train_loss += len(x) * train(x, y, net)
     norm = torch.nn.utils.clip_grad_norm_(net.parameters(), train_c['grad_norm'])
     optim.step()
+    scheduler.step()
     steps += 1
 
     if (steps%train_every == 0):
