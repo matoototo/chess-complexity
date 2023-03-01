@@ -32,6 +32,7 @@ parser.add_argument('--run', metavar='run number', type=int, help='the number of
 parser.add_argument('--yaml', metavar='path', type=pathlib.Path, help='the path to the yaml file', required=True)
 parser.add_argument('--empty-used', help='if present, empties the list of used files (usually done at end of epoch)', action='store_true')
 parser.add_argument('--summary', help='if present, prints a summary of the model', action='store_true')
+parser.add_argument('--fp16', help='if present, uses mixed precision training', action='store_true')
 
 args = parser.parse_args()
 config = yaml.load(open(args.yaml).read(), Loader=yaml.FullLoader)
@@ -74,6 +75,7 @@ for p in [checkpoint_path, log_path]:
 
 loss_func = torch.nn.MSELoss()
 writer = SummaryWriter(log_path, purge_step=1000000)
+scaler = torch.cuda.amp.GradScaler(enabled=args.fp16)
 
 
 def val(val_loader : DataLoader, net : torch.nn.Module):
@@ -83,8 +85,9 @@ def val(val_loader : DataLoader, net : torch.nn.Module):
         with torch.no_grad():
             x = x.to('cuda:0')
             y = y.to('cuda:0')
-            preds = net(x)
-            val_loss += len(x) * loss_func(preds, y)
+            with torch.cuda.amp.autocast(enabled=args.fp16):
+                preds = net(x)
+                val_loss += len(x) * loss_func(preds, y)
     return val_loss / (train_c["num_workers"]*len(val_loader.dataset))
 
 
@@ -93,9 +96,10 @@ def train(x, y, net : torch.nn.Module):
     x = x.to('cuda:0')
     y = y.to('cuda:0')
     optim.zero_grad()
-    preds = net(x)
-    loss = loss_func(preds, y)
-    loss.backward()
+    with torch.cuda.amp.autocast(enabled=args.fp16):
+        preds = net(x)
+        loss = loss_func(preds, y)
+    scaler.scale(loss).backward()
     return loss
 
 
@@ -175,8 +179,11 @@ for x, y in loader:
     n_samples += len(x)
     linear_warmup(optim)
     train_loss += len(x) * train(x, y, net)
+
+    scaler.unscale_(optim)
     norm = torch.nn.utils.clip_grad_norm_(net.parameters(), train_c['grad_norm'])
-    optim.step()
+    scaler.step(optim)
+    scaler.update()
     scheduler.step()
     steps += 1
 
