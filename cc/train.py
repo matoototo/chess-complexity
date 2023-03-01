@@ -45,6 +45,8 @@ if 'se_ratio' not in model_c: model_c['se_ratio'] = 8
 if 'warmup_steps' not in train_c: train_c['warmup_steps'] = 0
 if 'block_activation' not in model_c: model_c['block_activation'] = 'ReLU'
 if 'weight_decay' not in train_c: train_c['weight_decay'] = 0
+if 'lr_min' not in train_c: train_c['lr_min'] = 3e-4
+if 'lr_steps' not in train_c: train_c['lr_steps'] = 1e6
 
 train_c["val_size"] //= train_c["num_workers"]
 
@@ -157,9 +159,7 @@ smm = SharedMemoryManager()
 smm.start()
 
 used_mask = smm.ShareableList(list_to_mask(files, used))
-
-dataset_steps = 1e6
-scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optim, dataset_steps, eta_min=train_c['lr'] / 10)
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optim, train_c['lr_steps'], eta_min=train_c['lr_min'])
 
 val_dataset = PositionDataset(val_files, train_c["val_size"], loop=True)
 val_loader = DataLoader(val_dataset, train_c['bs'], False, pin_memory=True, num_workers=train_c['num_workers'], persistent_workers=True)
