@@ -1,6 +1,6 @@
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data.dataloader import DataLoader
-from cc.model.model import Model
+from cc.model.model import Model, FixupModel
 from cc.parser.data import PositionDataset
 import cc.checkpoint as checkpoint
 import torch
@@ -43,8 +43,10 @@ if 'head_v2' not in model_c: model_c['head_v2'] = False
 if 'head_filters' not in model_c: model_c['head_filters'] = 1
 if 'use_se' not in model_c: model_c['use_se'] = False
 if 'se_ratio' not in model_c: model_c['se_ratio'] = 8
-if 'warmup_steps' not in train_c: train_c['warmup_steps'] = 0
 if 'block_activation' not in model_c: model_c['block_activation'] = 'ReLU'
+if 'use_fixup' not in model_c: model_c['use_fixup'] = False
+
+if 'warmup_steps' not in train_c: train_c['warmup_steps'] = 0
 if 'weight_decay' not in train_c: train_c['weight_decay'] = 0
 if 'lr_min' not in train_c: train_c['lr_min'] = 3e-4
 if 'lr_steps' not in train_c: train_c['lr_steps'] = 1e6
@@ -74,7 +76,7 @@ for p in [checkpoint_path, log_path]:
 
 
 loss_func = torch.nn.MSELoss()
-writer = SummaryWriter(log_path, purge_step=1000000)
+writer = SummaryWriter(log_path, purge_step=int(1e9))
 scaler = torch.cuda.amp.GradScaler(enabled=args.fp16)
 
 
@@ -125,6 +127,10 @@ activation_map = {'ReLU': torch.nn.ReLU, 'Mish': torch.nn.Mish}
 block_activation = activation_map[model_c['block_activation']]
 
 checkpoints = os.listdir(checkpoint_path)
+
+if model_c["use_fixup"]:
+    Model = FixupModel
+
 if len(checkpoints) != 0:
     paths = [os.path.join(checkpoint_path, basename) for basename in checkpoints]
     newest_checkpoint = max(paths, key=os.path.getctime)
