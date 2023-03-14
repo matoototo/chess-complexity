@@ -7,12 +7,17 @@ from pathlib import Path
 from io import TextIOWrapper
 import multiprocessing as mp
 
+def base_time(tc):
+    return int(tc[0])
+
+def increment(tc):
+    return int(tc[1])
 
 def parse_tc(tc_string):
-    tc_string = tc_string.split("+")
-    if len(tc_string) == 1:
+    tc = tc_string.split("+")
+    if len(tc) == 1:
         return None
-    return str(int(tc_string[0])+40*int(tc_string[1])) + '\n'
+    return str(base_time(tc)+40*increment(tc)) + '\n'
 
 def parse_res(res_string):
     res_string = res_string.split("-")
@@ -21,6 +26,22 @@ def parse_res(res_string):
     if ("1/2" in res_string):
         return "0\n"
     return str(int(res_string[0])-int(res_string[1])) + '\n'
+
+def time_used(game : chess.pgn.Game, white_time, black_time, inc):
+    is_white = game.turn()
+
+    previous_time = white_time if is_white else black_time
+    current_time = game.clock()
+
+    if not current_time:
+        return white_time, black_time, 0
+        raise RuntimeError(f"Clock data not available. {game} {white_time} {black_time} {inc}")
+
+    white_time = white_time if not is_white else current_time
+    black_time = black_time if is_white else current_time
+
+    time_used = int(previous_time + inc - current_time)
+    return white_time, black_time, time_used
 
 def parse_game(game : chess.pgn.Game, out : TextIOWrapper):
     if (game != None):
@@ -32,14 +53,26 @@ def parse_game(game : chess.pgn.Game, out : TextIOWrapper):
         out.write(game.headers["BlackElo"] + '\n')
         out.write(tc)
 
+
+        tc_list = game.headers["TimeControl"].split("+")
+        white_time = base_time(tc_list)
+        black_time = base_time(tc_list)
+        inc = increment(tc_list)
+
     while (game != None):
+        if game.clock():
+            white_time, black_time, used_time = time_used(game, white_time, black_time, inc)
+            out.write(f"{used_time}\n")
+
         out.write(game.board().fen() + '\n')
         if game.eval():
             out.write(str((2*game.eval().wdl(model="sf15.1").white().expectation())-1.0))
         else:
             out.write("0")
         out.write('\n')
+
         game = game.next()
+    out.write("0\n")
     out.write('\n')
 
 def parse(pgn_file, input_dir, output_dir):

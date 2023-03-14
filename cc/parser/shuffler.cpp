@@ -20,7 +20,7 @@ struct Game {
     int welo;
     int belo;
     int tc;
-    Game(const int& win, const int& we, const int& be, const int& t): winner(win), welo(we), belo(be), tc(t) {}
+    Game(const int win, const int we, const int be, const int t): winner(win), welo(we), belo(be), tc(t) {}
     bool operator==(Game& other) {
         return winner == other.winner && welo == other.welo && belo == other.belo && tc == other.tc;
     }
@@ -29,11 +29,12 @@ struct Game {
 struct Position {
     std::string fen;
     float eval, eval_next;
+    int time_taken;
     Game game;
-    Position(const std::string& s, const float& ev, const Game& g): fen(s), eval(ev), eval_next(ev), game(g) {}
+    Position(const std::string& s, const float ev, const Game& g, const int time_taken): fen(s), eval(ev), eval_next(ev), game(g), time_taken(time_taken) {}
     std::string to_string() {
         std::stringstream ss;
-        ss << fen << ", " << eval << ", " << eval_next << ", " << game.winner << ", " << game.welo << ", " << game.belo << ", " << game.tc << '\n';
+        ss << fen << ", " << eval << ", " << eval_next << ", " << game.winner << ", " << game.welo << ", " << game.belo << ", " << game.tc << ", " << time_taken << '\n';
         return ss.str();
     }
 };
@@ -46,7 +47,7 @@ struct Data {
     unsigned long long i;
     std::vector<Position> positions;
     bool last = false;
-    Data(const fs::path& f): file(f), current_game(next_game()), current_pos(STARTPOS, 0, current_game), i(0), positions(populate_positions()) {}
+    Data(const fs::path& f): file(f), current_game(next_game()), current_pos(STARTPOS, 0, current_game, 0), i(0), positions(populate_positions()) {}
 
     Game next_game() {
         std::string line;
@@ -77,7 +78,9 @@ struct Data {
         std::string line;
         getline(file, line);
         float eval = std::stof(line);
-        current_pos = Position(fen, eval, current_game);
+        getline(file, line);
+        int time_taken = std::stoi(line);
+        current_pos = Position(fen, eval, current_game, time_taken);
     }
 
     std::vector<Position> populate_positions() {

@@ -27,6 +27,8 @@ class InferDataset(torch.utils.data.Dataset):
 
     def __len__(self):
         return len(self.positions)
+
+
 class PositionDataset(torch.utils.data.IterableDataset):
     def __init__(self, filenames, limit = None, used = [], loop = False):
         self.filenames = filenames
@@ -89,9 +91,10 @@ class PositionDataset(torch.utils.data.IterableDataset):
         welo = int(line[4])
         belo = int(line[5])
         tc = int(line[6])
+        time_taken = int(line[7])
         to_move = 1.0 if fen.split(' ')[1] == 'w' else -1.0
         labels = eval_delta(eval, eval_next, to_move)
-        planes = self.to_planes(to_move, fen, welo, belo, tc, eval)
+        planes = self.to_planes(to_move, fen, welo, belo, tc, eval, time_taken)
         return planes, torch.tensor([labels])
 
     def piece_indices(self, fen):
@@ -106,11 +109,12 @@ class PositionDataset(torch.utils.data.IterableDataset):
             else: index += 1
         return indices
 
-    def to_planes(self, to_move, fen, welo, belo, tc, eval):
+    def to_planes(self, to_move, fen, welo, belo, tc, eval, time_taken):
         planes = self.fen_to_planes(to_move, fen)
         planes = torch.cat((planes, elo_to_plane(welo if to_move == 1.0 else belo)))
         planes = torch.cat((planes, tc_to_plane(tc)))
         planes = torch.cat((planes, eval_to_plane(eval)))
+        planes = torch.cat((planes, time_taken_to_plane(time_taken)))
         return planes
 
     def fen_to_planes(self, to_move, fen):
@@ -195,6 +199,11 @@ def tc_to_plane(tc):
 
 def eval_to_plane(eval):
     return torch.full((1, 8, 8), eval) # check if passing next instead of current...
+
+def time_taken_to_plane(time_taken):
+    AVG = 30 # insert correct values
+    STDDEV = 30 # insert correct values
+    return torch.full((1, 8, 8), (time_taken-AVG)/STDDEV)
 
 def eval_delta(eval, next_eval, next_to_move):
     return (eval-next_eval)*next_to_move

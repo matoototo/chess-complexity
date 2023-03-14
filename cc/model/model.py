@@ -7,7 +7,7 @@ class Model(nn.Module):
     def __init__(self, filters, blocks, head_neurons, head_v2 = False, use_se = False, se_ratio = 8, head_filters = 1, activation = nn.Mish):
         super().__init__()
         self.args = (filters, blocks, head_neurons, head_v2, use_se, se_ratio, head_filters, activation)
-        self.input = InputBlock(16, filters, activation)
+        self.input = InputBlock(17, filters, activation)
         self.blocks = nn.Sequential(
             OrderedDict([(f"block{i}", Block(filters, use_se, se_ratio, activation)) for i in range(blocks)])
         )
