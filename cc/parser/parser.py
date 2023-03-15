@@ -59,10 +59,16 @@ def parse_game(game : chess.pgn.Game, out : TextIOWrapper):
         black_time = base_time(tc_list)
         inc = increment(tc_list)
 
+    first = True
+
     while (game != None):
         if game.clock():
             white_time, black_time, used_time = time_used(game, white_time, black_time, inc)
-            out.write(f"{used_time}\n")
+        else:
+            used_time = 0
+
+        if not first: out.write(f"{used_time}\n")
+        else: first = False
 
         out.write(game.board().fen() + '\n')
         if game.eval():
