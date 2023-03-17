@@ -205,7 +205,7 @@ class FixupModel(nn.Module):
     def __init__(self, filters, blocks, head_neurons, head_v2 = False, use_se = False, se_ratio = 8, head_filters = 1, activation = nn.Mish):
         super().__init__()
         self.args = (filters, blocks, head_neurons, head_v2, use_se, se_ratio, head_filters, activation)
-        self.input = FixupInputBlock(16, filters, use_se, se_ratio, activation)
+        self.input = FixupInputBlock(17, filters, use_se, se_ratio, activation)
         self.blocks = nn.Sequential(
             OrderedDict([(f"block{i}", FixupBlock(filters, use_se, se_ratio, activation)) for i in range(blocks)])
         )
