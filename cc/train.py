@@ -106,7 +106,7 @@ def train(x, y, net : torch.nn.Module):
 def load_optim(opt, net):
     opt_map = {'Adam': torch.optim.Adam, 'SGD': torch.optim.SGD, 'RAdam': torch.optim.RAdam}
     if opt == 'SGD': optim = opt_map[opt](net.parameters(), train_c['lr'], 0.9, weight_decay=train_c['weight_decay'])
-    else: optim = opt_map[opt](net.parameters(), train_c['lr'], weight_decay=train_c['weight_decay'])
+    else: optim = opt_map[opt](net.parameters(), train_c['lr'], weight_decay=train_c['weight_decay'], eps=1e-4)
     return optim
 
 
