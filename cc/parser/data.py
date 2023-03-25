@@ -30,13 +30,14 @@ class InferDataset(torch.utils.data.Dataset):
 
 
 class PositionDataset(torch.utils.data.IterableDataset):
-    def __init__(self, filenames, limit = None, used = [], loop = False):
+    def __init__(self, filenames, limit = None, used = [], loop = False, legacy_stats = True):
         self.filenames = filenames
         self.mapped_iterators = None
         self.mutex = mp.Lock()
         self.limit = limit
         self.used = used
         self.loop = loop
+        self.legacy_stats = legacy_stats
 
     def __len__(self):
         return self.limit
@@ -111,10 +112,10 @@ class PositionDataset(torch.utils.data.IterableDataset):
 
     def to_planes(self, to_move, fen, welo, belo, tc, eval, time_taken):
         planes = self.fen_to_planes(to_move, fen)
-        planes = torch.cat((planes, elo_to_plane(welo if to_move == 1.0 else belo)))
-        planes = torch.cat((planes, tc_to_plane(tc)))
+        planes = torch.cat((planes, elo_to_plane(welo if to_move == 1.0 else belo, self.legacy_stats)))
+        planes = torch.cat((planes, tc_to_plane(tc, self.legacy_stats)))
         planes = torch.cat((planes, eval_to_plane(eval)))
-        planes = torch.cat((planes, time_taken_to_plane(time_taken)))
+        planes = torch.cat((planes, time_taken_to_plane(time_taken, self.legacy_stats)))
         return planes
 
     def fen_to_planes(self, to_move, fen):
@@ -187,22 +188,22 @@ class Board:
         planes = planes.reshape(12, 8, 8)
         return planes
 
-def elo_to_plane(elo):
-    AVG = 1500 # Approximate values, worth taking another
-    STDDEV = 350 # look at once a baseline is established
+def elo_to_plane(elo, legacy = True):
+    AVG = 1500 if legacy else 1605
+    STDDEV = 350 if legacy else 425
     return torch.full((1, 8, 8), (elo-AVG)/STDDEV)
 
-def tc_to_plane(tc):
-    AVG = 800 # VERY approximate values, definitely worth taking another
-    STDDEV = 200 # look at once a baseline is established
+def tc_to_plane(tc, legacy = True):
+    AVG = 800 if legacy else 425
+    STDDEV = 200 if legacy else 445
     return torch.full((1, 8, 8), (tc-AVG)/STDDEV)
 
 def eval_to_plane(eval):
     return torch.full((1, 8, 8), eval) # check if passing next instead of current...
 
-def time_taken_to_plane(time_taken):
-    AVG = 30 # insert correct values
-    STDDEV = 30 # insert correct values
+def time_taken_to_plane(time_taken, legacy = True):
+    AVG = 30 if legacy else 6.93
+    STDDEV = 30 if legacy else 13.4
     return torch.full((1, 8, 8), (time_taken-AVG)/STDDEV)
 
 def eval_delta(eval, next_eval, next_to_move):

@@ -6,6 +6,7 @@ data:
     cp_dir: ./checkpoints/
     log_dir: ./logs/
     val_dir: ./val/
+    stats_v2: true
 
 train:
     lr: 0.0003

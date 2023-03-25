@@ -39,12 +39,14 @@ config = yaml.load(open(args.yaml).read(), Loader=yaml.FullLoader)
 data_c = config['data']
 train_c = config['train']
 model_c = config['model']
+
+if 'stats_v2' not in data_c: data_c['stats_v2'] = False
 if 'head_v2' not in model_c: model_c['head_v2'] = False
 if 'head_filters' not in model_c: model_c['head_filters'] = 1
 if 'use_se' not in model_c: model_c['use_se'] = False
 if 'se_ratio' not in model_c: model_c['se_ratio'] = 8
-if 'warmup_steps' not in train_c: train_c['warmup_steps'] = 0
 if 'block_activation' not in model_c: model_c['block_activation'] = 'ReLU'
+if 'warmup_steps' not in train_c: train_c['warmup_steps'] = 0
 if 'weight_decay' not in train_c: train_c['weight_decay'] = 0
 if 'lr_min' not in train_c: train_c['lr_min'] = 3e-4
 if 'lr_steps' not in train_c: train_c['lr_steps'] = 1e6
@@ -165,10 +167,10 @@ smm.start()
 used_mask = smm.ShareableList(list_to_mask(files, used))
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optim, train_c['lr_steps'], eta_min=train_c['lr_min'])
 
-val_dataset = PositionDataset(val_files, train_c["val_size"], loop=True)
+val_dataset = PositionDataset(val_files, train_c["val_size"], loop=True, legacy_stats=(not data_c['stats_v2']))
 val_loader = DataLoader(val_dataset, train_c['bs'], False, pin_memory=True, num_workers=train_c['num_workers'], persistent_workers=True)
 
-train_dataset = PositionDataset(files, used = used_mask)
+train_dataset = PositionDataset(files, used = used_mask, legacy_stats=(not data_c['stats_v2']))
 loader = DataLoader(train_dataset, train_c['bs'], pin_memory=True, drop_last=True, num_workers=train_c['num_workers'])
 n_samples = 0
 for step in range(steps):
