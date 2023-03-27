@@ -4,6 +4,7 @@ from collections import OrderedDict
 class TransformerModel(nn.Module):
     def __init__(self, num_layers, d_model, num_heads, dff, dropout_rate, ffn_activation, input_channels = 17):
         super(TransformerModel, self).__init__()
+        self.args = (num_layers, d_model, num_heads, dff, dropout_rate, ffn_activation, input_channels)
         self.input_layer = TransformerInputLayer(input_channels, d_model)
         self.encoder = TransformerEncoder(num_layers, d_model, num_heads, dff, dropout_rate, ffn_activation)
         self.head = ComplexityHead(d_model)
@@ -38,7 +39,7 @@ class TransformerEncoder(nn.Sequential):
 class TransformerEncoderLayer(nn.Module):
     def __init__(self, d_model, num_heads, dff, dropout_rate, ffn_activation):
         super(TransformerEncoderLayer, self).__init__()
-        self.mha = nn.MultiheadAttention(d_model, num_heads, dropout_rate)
+        self.mha = nn.MultiheadAttention(d_model, num_heads, dropout_rate, batch_first = True)
         self.ln1 = nn.LayerNorm(d_model)
         self.ffn = nn.Sequential(
             nn.Linear(d_model, dff),
@@ -48,7 +49,7 @@ class TransformerEncoderLayer(nn.Module):
         self.ln2 = nn.LayerNorm(d_model)
 
     def forward(self, x):
-        y1 = self.mha(x, x, x, need_weights = False)
+        y1, _ = self.mha(x, x, x)
         y1 = self.ln1(y1 + x)
         y2 = self.ffn(y1)
         y2 = self.ln2(y2 + y1)
